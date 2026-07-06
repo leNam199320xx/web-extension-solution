@@ -4,234 +4,76 @@
 
 # Overview
 
-The Runtime Domain is the execution platform responsible for hosting, managing and coordinating plugins throughout their lifecycle.
+The Runtime Domain defines the trusted execution environment responsible for hosting, coordinating and governing Plugins within the Metadata-Driven Secure Plugin Runtime.
 
-The Runtime provides a controlled, secure and isolated environment in which plugins are discovered, validated, loaded, executed and unloaded.
+The Runtime acts as the central orchestration domain of the platform. It provides a controlled environment where Plugins are discovered, validated, activated, executed and retired according to platform governance policies.
 
-The Runtime is the orchestration layer of the platform and coordinates interactions between all other domains.
+The Runtime owns the operational lifecycle of deployed Plugins while delegating business functionality to the Plugins themselves.
 
 ---
 
 # Purpose
 
-The Runtime Domain provides:
+The Runtime Domain exists to:
 
-- Plugin hosting
-- Plugin lifecycle management
-- Execution orchestration
-- Resource coordination
-- Dependency coordination
-- Runtime isolation
-- Service composition
-- Operational governance
+- Host deployed Plugins.
+- Coordinate plugin lifecycle.
+- Provide execution environments.
+- Manage shared platform services.
+- Coordinate interactions between domains.
+- Enforce platform governance.
+- Maintain runtime stability.
 
 ---
 
-# Responsibilities
+# Domain Scope
 
 The Runtime Domain is responsible for:
 
-- Discovering plugins
-- Loading plugins
-- Initializing plugins
-- Activating plugins
-- Stopping plugins
-- Unloading plugins
-- Coordinating execution
-- Managing plugin isolation
-- Managing shared services
-- Publishing runtime events
+- Hosting Plugins.
+- Coordinating Plugin lifecycle.
+- Managing execution environments.
+- Managing runtime resources.
+- Managing service discovery.
+- Coordinating domain interactions.
+- Publishing runtime events.
 
-The Runtime Domain is NOT responsible for:
+The Runtime Domain is not responsible for:
 
-- Business logic implementation
-- Manifest authoring
-- Security policy definition
-- Plugin development
-- Audit persistence
+- Implementing business logic.
+- Creating plugin metadata.
+- Defining security policies.
+- Developing Plugins.
+- Persisting audit records.
+
+Those responsibilities belong to their respective domains.
 
 ---
 
 # Business Concept
 
-The Runtime is the trusted execution environment of the platform.
+The Runtime is the trusted operational environment of the platform.
 
-Plugins never communicate directly with infrastructure.
+Every Plugin operates inside a Runtime.
 
-All interactions occur through the Runtime.
+The Runtime determines:
 
-The Runtime coordinates every stage of the plugin lifecycle while enforcing platform governance.
+- when Plugins become active,
+- where Plugins execute,
+- how Plugins interact,
+- when Plugins stop executing.
 
----
+The Runtime never owns business functionality.
 
-# Aggregate
-
-Aggregate Root
-
-Runtime
-
-The Runtime Aggregate owns:
-
-- Plugin Registry
-- Plugin Host
-- Service Registry
-- Execution Coordinator
-- Resource Manager
-- Runtime Configuration
+Its responsibility is orchestration rather than business execution.
 
 ---
 
-# Business Identity
+# Bounded Context
 
-Every Runtime instance is uniquely identified by:
+The Runtime Domain owns operational orchestration.
 
-- Runtime Identifier
-- Runtime Version
-
----
-
-# Business Attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| Runtime Identifier | Runtime identity |
-| Runtime Version | Platform version |
-| Status | Runtime state |
-| Configuration | Runtime configuration |
-| Installed Plugins | Registered plugins |
-| Active Plugins | Running plugins |
-| Service Registry | Shared services |
-| Resource Limits | Runtime resource policies |
-
----
-
-# Owned Business Objects
-
-| Business Object | Purpose |
-|-----------------|---------|
-| Plugin Registry | Tracks installed plugins |
-| Plugin Host | Hosts plugin instances |
-| Execution Coordinator | Coordinates execution |
-| Resource Manager | Allocates resources |
-| Service Registry | Shared services |
-| Runtime Configuration | Platform configuration |
-
----
-
-# Business Relationships
-
-Runtime hosts:
-
-- Many Plugins
-
-Runtime coordinates:
-
-- Many Executions
-
-Runtime validates:
-
-- Many Manifests
-
-Runtime enforces:
-
-- Security Policies
-
-Runtime produces:
-
-- Runtime Events
-- Metrics
-- Audit Records
-
----
-
-# Lifecycle
-
-Runtime lifecycle
-
-```text
-Created
-
-↓
-
-Configured
-
-↓
-
-Starting
-
-↓
-
-Running
-
-↓
-
-Maintenance
-
-↓
-
-Recovering
-
-↓
-
-Stopping
-
-↓
-
-Stopped
-
-↓
-
-Archived
-```
-
----
-
-# Business Invariants
-
-The following rules are always true.
-
-- One Runtime hosts many Plugins.
-- A Plugin executes in exactly one Runtime.
-- Only validated Plugins may be loaded.
-- Active Plugins shall execute in isolated contexts.
-- Runtime configuration changes shall be auditable.
-- Runtime shall maintain service availability during normal operations.
-
----
-
-# Domain Events
-
-Typical business events include:
-
-- RuntimeCreated
-- RuntimeConfigured
-- RuntimeStarted
-- RuntimeStopped
-- RuntimeRecovered
-- PluginLoaded
-- PluginActivated
-- PluginUnloaded
-- ServiceRegistered
-- ServiceRemoved
-
----
-
-# Business Rules Mapping
-
-| Rule | Description |
-|------|-------------|
-| BR-501 | Runtime Initialization |
-| BR-502 | Plugin Loading |
-| BR-503 | Runtime Isolation |
-| BR-504 | Service Registration |
-| BR-505 | Resource Allocation |
-| BR-506 | Runtime Recovery |
-
----
-
-# Domain Relationships
-
-The Runtime collaborates with:
+It collaborates with:
 
 - Plugin Domain
 - Manifest Domain
@@ -240,58 +82,193 @@ The Runtime collaborates with:
 - Administration Domain
 - Observability Domain
 
-The Runtime acts as the central orchestrator between domains.
+The Runtime Domain does not own concepts belonging to those domains.
 
 ---
 
-# Domain Constraints
+# Aggregate
 
-The Runtime shall:
+## Aggregate Root
 
-- Host multiple plugins.
-- Isolate plugin execution.
-- Coordinate plugin lifecycle.
-- Maintain service registry consistency.
-- Reject invalid plugins.
-- Prevent resource conflicts.
-- Publish operational events.
+Runtime
+
+The Runtime Aggregate represents one operational instance of the platform.
+
+---
+
+# Entities
+
+## Runtime
+
+Represents an operational execution environment.
+
+Responsibilities:
+
+- Host Plugins.
+- Coordinate lifecycle.
+- Allocate runtime resources.
+- Coordinate platform services.
+- Publish runtime events.
+
+---
+
+## Runtime Configuration
+
+Represents operational configuration governing Runtime behavior.
+
+Responsibilities:
+
+- Configure operational limits.
+- Configure execution behavior.
+- Configure runtime services.
+
+---
+
+## Service Registry
+
+Represents the catalogue of platform services available to Plugins.
+
+Responsibilities:
+
+- Register services.
+- Discover services.
+- Maintain service availability.
+
+---
+
+# Value Objects
+
+The Runtime Domain uses the following immutable Value Objects.
+
+| Value Object | Description |
+|--------------|-------------|
+| RuntimeId | Unique Runtime identifier |
+| RuntimeVersion | Platform version |
+| RuntimeState | Current operational state |
+| ResourceLimit | Resource allocation policy |
+| ExecutionEnvironment | Runtime execution environment |
+| ServiceReference | Registered platform service |
+
+---
+
+# Relationships
+
+| Related Domain | Relationship |
+|----------------|-------------|
+| Plugin Domain | Runtime hosts Plugins |
+| Manifest Domain | Runtime validates Manifest contracts |
+| Execution Domain | Runtime coordinates Executions |
+| Security Domain | Runtime enforces security decisions |
+| Administration Domain | Runtime is configured and managed |
+| Observability Domain | Runtime publishes operational telemetry |
+
+The Runtime Domain coordinates these domains but does not own them.
+
+---
+
+# Business Invariants
+
+The following statements are always true.
+
+- Every Runtime has a unique identity.
+- A Runtime may host many Plugins.
+- A Plugin executes within exactly one Runtime.
+- Only validated Plugins may become active.
+- Runtime services shall remain discoverable while active.
+- Runtime configuration changes shall be auditable.
+- Runtime shall maintain isolation between Plugins.
+
+---
+
+# Lifecycle
+
+A Runtime progresses through the following operational states.
+
+```text
+Provisioned
+      ↓
+Configured
+      ↓
+Starting
+      ↓
+Running
+      ↓
+Maintenance
+      ↓
+Recovering
+      ↓
+Stopping
+      ↓
+Stopped
+      ↓
+Retired
+```
+
+State transitions are governed by Administration policies.
+
+---
+
+# Domain Events
+
+Typical business events include:
+
+- RuntimeProvisioned
+- RuntimeConfigured
+- RuntimeStarted
+- RuntimeReady
+- RuntimeEnteredMaintenance
+- RuntimeRecovered
+- RuntimeStopped
+- RuntimeRetired
+- ServiceRegistered
+- ServiceRemoved
+
+These events may be consumed by Administration, Execution and Observability domains.
+
+---
+
+# Business Rules Mapping
+
+| Business Rule | Description |
+|---------------|-------------|
+| BR-501 | Runtime Initialization |
+| BR-502 | Plugin Hosting |
+| BR-503 | Runtime Isolation |
+| BR-504 | Service Registry |
+| BR-505 | Resource Allocation |
+| BR-506 | Runtime Recovery |
 
 ---
 
 # Domain Diagram
 
 ```mermaid
-flowchart TD
+flowchart LR
 
 Runtime
 
-Runtime --> PluginRegistry
-
-Runtime --> PluginHost
-
-Runtime --> ServiceRegistry
-
-Runtime --> ExecutionCoordinator
-
-Runtime --> ResourceManager
-
 Runtime --> RuntimeConfiguration
+Runtime --> ServiceRegistry
 
 Plugin --> Runtime
 
-Execution --> Runtime
+Manifest --> Runtime
+
+Runtime --> Execution
 
 Security --> Runtime
 
 Administration --> Runtime
 
-Observability --> Runtime
+Runtime --> Observability
 ```
 
 ---
 
 # Related Documents
 
+- DM-000 Domain Overview
+- DM-050 Shared Kernel
 - DM-100 Plugin Domain
 - DM-200 Manifest Domain
 - DM-400 Execution Domain
