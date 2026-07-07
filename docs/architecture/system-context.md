@@ -5,18 +5,11 @@
 
 # 1. PURPOSE
 
-This document defines the **external and internal system boundaries**.
-
-It shows:
-
-- What is inside the system
-- What is outside the system
-- How systems interact
-- Trust boundaries
+Defines external and internal system boundaries, actors, and trust zones.
 
 ---
 
-# 2. HIGH LEVEL CONTEXT
+# 2. SYSTEM CONTEXT DIAGRAM
 
 ```
                 ┌────────────────────┐
@@ -26,24 +19,19 @@ It shows:
                          ▼
         ┌────────────────────────────────────┐
         │        Approval Platform          │
-        │  - Scan                            │
-        │  - Validate                       │
-        │  - Sign Manifest                 │
+        │  - Scan, Validate, Sign           │
         └──────────────┬────────────────────┘
                        │
                        ▼
         ┌────────────────────────────────────┐
         │      Plugin Repository            │
-        │  - Store binaries                 │
-        │  - Store manifests               │
+        │  - Immutable binary + manifest    │
         └──────────────┬────────────────────┘
                        │
                        ▼
         ┌────────────────────────────────────┐
         │        Core Runtime (.NET 10)     │
-        │  - Execute plugins                │
-        │  - Enforce security              │
-        │  - Manage lifecycle              │
+        │  - Execute, Enforce, Observe      │
         └──────────────┬────────────────────┘
                        │
        ┌───────────────┼──────────────────────┐
@@ -51,7 +39,6 @@ It shows:
  ┌──────────┐   ┌──────────────┐   ┌──────────────┐
  │ PostgreSQL│   │ Redis Cache  │   │ Observability│
  └──────────┘   └──────────────┘   └──────────────┘
-
                        │
                        ▼
                 ┌──────────────┐
@@ -63,184 +50,67 @@ It shows:
 
 # 3. TRUST BOUNDARIES
 
-## Boundary 1 — Developer → Platform
+| Boundary | Between | Trust Level |
+|----------|---------|-------------|
+| B1 | Developer → Approval Platform | Untrusted input (code, metadata) |
+| B2 | Approval → Repository | Trusted only after scan + sign |
+| B3 | Repository → Runtime | Validated at every load (re-verified) |
+| B4 | Runtime → Infrastructure | Controlled via capabilities only |
+| B5 | Plugin → Runtime | Zero Trust (always) |
 
-Untrusted input:
-
-- Plugin code
-- Metadata
-- Dependencies
-
----
-
-## Boundary 2 — Approval System
-
-Responsible for:
-
-- Security scanning
-- Validation
-- Signing
-
-Trusted only after verification.
+Key rule: trust is NEVER carried across boundaries. Each component re-validates.
 
 ---
 
-## Boundary 3 — Repository
-
-Immutable storage:
-
-- Plugins
-- Manifests
-
-No execution allowed here.
-
----
-
-## Boundary 4 — Runtime
-
-Most critical boundary.
-
-Rules:
-
-- Never trust plugin
-- Always validate manifest
-- Always enforce capability
-
----
-
-## Boundary 5 — Infrastructure
-
-External systems:
-
-- Database
-- Cache
-- KMS
-- Monitoring
-
-Access only via controlled interfaces.
-
----
-
-# 4. SYSTEM ACTORS
+# 4. ACTORS
 
 ## Human Actors
 
-- Developer
-- Security Reviewer
-- Admin
-- Auditor
-
----
+| Actor | Role |
+|-------|------|
+| Developer | Uploads plugins |
+| Security Reviewer | Approves/rejects plugins |
+| Admin | Manages platform, revokes plugins |
+| Auditor | Reviews audit logs (read-only) |
 
 ## System Actors
 
-- Core Runtime
-- Approval Engine
-- Capability Engine
-- Plugin Loader
+| Actor | Responsibility |
+|-------|---------------|
+| Core Runtime | Executes plugins, enforces security |
+| Approval Engine | Scans, validates, signs |
+| Capability Engine | Controls resource access |
+| Plugin Loader | Manages assembly lifecycle |
+| Scheduler | Controls execution dispatch |
 
 ---
 
 # 5. EXTERNAL DEPENDENCIES
 
-## PostgreSQL
-
-Stores:
-
-- Metadata
-- Audit logs
-- Execution history
-
----
-
-## Redis
-
-Stores:
-
-- Cache
-- Revocation list
-- Temporary locks
+| System | Purpose | Access Pattern |
+|--------|---------|---------------|
+| PostgreSQL | Metadata, audit, execution history | Direct from Core (EF Core) |
+| Redis | Cache, revocation list, locks | Direct from Core (StackExchange.Redis) |
+| KMS / HSM | Signing keys, certificates | Core → KMS API |
+| Object Storage | Plugin binaries | Core reads at load time |
+| OpenTelemetry Collector | Logs, metrics, traces | Core pushes via OTLP |
 
 ---
 
-## KMS / HSM
-
-Stores:
-
-- Signing keys
-- Certificates
-
----
-
-## Observability Stack
-
-- Logs
-- Metrics
-- Traces
-
-Examples:
-
-- OpenTelemetry
-- Prometheus
-- Grafana
-
----
-
-# 6. SYSTEM RESPONSIBILITIES
-
-## Core Runtime
-
-- Execute plugins
-- Enforce security
-- Manage lifecycle
-- Collect telemetry
-
----
-
-## Approval System
-
-- Validate plugins
-- Scan vulnerabilities
-- Sign manifests
-
----
-
-## Repository
-
-- Store artifacts
-- Versioning
-- Immutable history
-
----
-
-# 7. DATA FLOW SUMMARY
+# 6. DATA FLOW
 
 ```
-Developer
-   ↓
-Approval System
-   ↓
-Repository
-   ↓
-Runtime Execution
-   ↓
-Infrastructure Services
+Developer → Approval Platform → Repository → Runtime → Infrastructure
+                                                    → Observability
 ```
 
 ---
 
-# 8. NON-TRUST MODEL
-
-No component trusts another by default.
-
-Every interaction must be validated.
-
----
-
-# 9. DESIGN PRINCIPLE
+# 7. DESIGN PRINCIPLE
 
 > The system is a chain of trust boundaries, not a single trusted system.
+> No component trusts another by default. Every interaction is validated.
 
 ---
 
-# 🏁 END OF SYSTEM CONTEXT
+# 🏁 END

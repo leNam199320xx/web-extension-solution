@@ -5,145 +5,207 @@
 
 # 1. PURPOSE
 
-Defines the event-driven architecture used in the system.
+Defines the event-driven architecture. Events record what happened in the system and feed observability, audit, and future analytics.
 
-It covers:
-
-- System events
-- Plugin events
-- Security events
-- Audit events
+For observability integration, see `docs/infrastructure/observability.md`.
+For audit requirements, see `docs/data/data-model.md` (AuditLog entity).
 
 ---
 
 # 2. CORE PRINCIPLE
 
 > Everything important in the system is an event.
-
-Events are:
-
-- Immutable
-- Append-only
-- Traceable
-- Replayable (optional)
+> Events are immutable, append-only, and traceable.
 
 ---
 
-# 3. EVENT TYPES
+# 3. PHASE 1 DECISION
 
-## 3.1 System Events
+**PostgreSQL-backed event storage** for Phase 1.
 
-- RuntimeStarted
-- RuntimeStopped
-- NodeScaled
-- NodeFailed
+Events are written to the `audit_logs` table and optionally to a dedicated `events` table.
+Future: migrate to event streaming (Kafka, RabbitMQ, or Azure Service Bus) when scale demands it.
 
 ---
 
-## 3.2 Plugin Events
+# 4. EVENT BASE CLASS
 
-- PluginUploaded
-- PluginApproved
-- PluginRejected
-- PluginExecuted
-- PluginFailed
-
----
-
-## 3.3 Security Events
-
-- ManifestValidated
-- SignatureVerified
-- CapabilityGranted
-- CapabilityDenied
-- SecurityViolationDetected
-
----
-
-## 3.4 Execution Events
-
-- ExecutionStarted
-- ExecutionCompleted
-- ExecutionTimeout
-- ExecutionCancelled
-
----
-
-# 4. EVENT FLOW
-
-```
-Runtime → Event Generator → Event Store → Observability Pipeline
+```csharp
+public abstract record DomainEvent
+{
+    public string EventId { get; init; } = Guid.NewGuid().ToString();
+    public string EventType { get; init; } = "";
+    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+    public string TraceId { get; init; } = "";
+    public string? CorrelationId { get; init; }
+    public string? TenantId { get; init; }
+    public string? ActorId { get; init; }
+}
 ```
 
 ---
 
-# 5. EVENT STORE MODEL
+# 5. EVENT TYPES
 
-Events are:
+## 5.1 Plugin Lifecycle Events
 
-- Append-only
-- Immutable
-- Time-ordered
+```csharp
+public record PluginUploadedEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string Version { get; init; } = "";
+    public string UploadedBy { get; init; } = "";
+}
 
-Stored in:
+public record PluginApprovedEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string Version { get; init; } = "";
+    public string ApprovedBy { get; init; } = "";
+}
 
-- PostgreSQL (primary)
-- Event streaming system (future: Kafka / RabbitMQ)
+public record PluginRejectedEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string Version { get; init; } = "";
+    public string Reason { get; init; } = "";
+}
 
----
-
-# 6. EVENT STRUCTURE
-
-Each event contains:
-
+public record PluginRevokedEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string Version { get; init; } = "";
+    public string Reason { get; init; } = "";
+    public string RevokedBy { get; init; } = "";
+}
 ```
-EventId
-EventType
-Timestamp
-CorrelationId
-TenantId
-Payload
-Metadata
+
+## 5.2 Execution Events
+
+```csharp
+public record ExecutionStartedEvent : DomainEvent
+{
+    public string ExecutionId { get; init; } = "";
+    public string PluginId { get; init; } = "";
+    public string Version { get; init; } = "";
+}
+
+public record ExecutionCompletedEvent : DomainEvent
+{
+    public string ExecutionId { get; init; } = "";
+    public string PluginId { get; init; } = "";
+    public int DurationMs { get; init; }
+}
+
+public record ExecutionFailedEvent : DomainEvent
+{
+    public string ExecutionId { get; init; } = "";
+    public string PluginId { get; init; } = "";
+    public string ErrorCode { get; init; } = "";
+    public string ErrorMessage { get; init; } = "";
+}
+
+public record ExecutionTimeoutEvent : DomainEvent
+{
+    public string ExecutionId { get; init; } = "";
+    public string PluginId { get; init; } = "";
+    public int TimeoutMs { get; init; }
+}
+```
+
+## 5.3 Security Events
+
+```csharp
+public record SecurityViolationEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string ViolationType { get; init; } = "";
+    public string Detail { get; init; } = "";
+}
+
+public record SignatureValidationFailedEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string Version { get; init; } = "";
+}
+
+public record CapabilityDeniedEvent : DomainEvent
+{
+    public string PluginId { get; init; } = "";
+    public string Capability { get; init; } = "";
+    public string Reason { get; init; } = "";
+}
+```
+
+## 5.4 System Events
+
+```csharp
+public record RuntimeNodeStartedEvent : DomainEvent
+{
+    public string NodeId { get; init; } = "";
+    public string Version { get; init; } = "";
+}
+
+public record RuntimeNodeStoppedEvent : DomainEvent
+{
+    public string NodeId { get; init; } = "";
+    public string Reason { get; init; } = "";
+}
 ```
 
 ---
 
-# 7. CORRELATION MODEL
+# 6. EVENT PUBLISHER
 
-All events MUST share:
+```csharp
+public interface IEventPublisher
+{
+    Task PublishAsync(DomainEvent @event, CancellationToken cancellationToken = default);
+    Task PublishManyAsync(IEnumerable<DomainEvent> events, CancellationToken cancellationToken = default);
+}
+```
 
-- CorrelationId (request-level tracing)
-- ExecutionId (runtime-level tracing)
+Phase 1 implementation: writes directly to database.
+Phase 2: publishes to message broker.
 
 ---
 
-# 8. SECURITY EVENTS RULE
+# 7. EVENT CONSUMERS
+
+| Consumer | Purpose |
+|----------|---------|
+| Observability pipeline | Metrics, traces, dashboards |
+| Audit system | Immutable audit trail |
+| Alerting engine | Security incident notifications |
+| Analytics (future) | Usage patterns, trend analysis |
+
+---
+
+# 8. CORRELATION MODEL
+
+All events MUST include:
+- `TraceId`: request-level tracing (propagated from API)
+- `CorrelationId`: business-level grouping (optional, set by caller)
+- `EventId`: unique per event
+
+---
+
+# 9. SECURITY EVENTS PRIORITY
 
 Security events are:
-
-- Highest priority
-- Never discarded
-- Always audited
-
----
-
-# 9. EVENT CONSUMERS
-
-Consumers include:
-
-- Observability system
-- Audit system
-- Monitoring dashboards
-- Future AI analytics engine
+- Highest priority (never dropped)
+- Always persisted to audit log
+- Trigger real-time alerting
+- Never subject to sampling or throttling
 
 ---
 
 # 10. DESIGN PRINCIPLE
 
 > Events are the truth of the system.
-
-Not state, not cache, not logs.
+> They record what happened, when, and why.
+> They are immutable and always available for forensics.
 
 ---
 
-# 🏁 END OF EVENT MODEL
+# 🏁 END

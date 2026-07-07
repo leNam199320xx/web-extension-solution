@@ -5,192 +5,144 @@
 
 # 1. PURPOSE
 
-This document defines how plugins are isolated from:
+Defines how plugins are isolated from the host system, other plugins, and infrastructure.
 
-- Host system
-- Other plugins
-- Infrastructure
-- Runtime internals
-
-Isolation ensures **Zero Trust execution safety**.
+For plugin loading mechanics, see `docs/plugin/plugin-loading.md`.
+For resource enforcement, see `docs/runtime/resource-governance.md`.
 
 ---
 
 # 2. CORE PRINCIPLE
 
-> Plugins are hostile by default.
-
-Every plugin runs as if it is potentially malicious.
+> Plugins are hostile by default. Every plugin runs as if it is potentially malicious.
 
 ---
 
 # 3. ISOLATION LEVELS
 
-The system supports multiple isolation strategies:
+| Level | Mechanism | Security | Performance | Phase |
+|-------|-----------|----------|-------------|-------|
+| L1 | AssemblyLoadContext | Low | High | Phase 1 (default) |
+| L2 | Process Isolation | Medium | Medium | Phase 2 (recommended for prod) |
+| L3 | Container Isolation | High | Lower | Phase 3 (high-security) |
+| L4 | WASM Sandbox | Very High | TBD | Future |
 
-| Level | Mechanism | Security |
-|------|-----------|----------|
-| L1 | AssemblyLoadContext | Low |
-| L2 | Process Isolation | Medium |
-| L3 | Container Isolation | High |
-| L4 | WASM Sandbox | Very High (future) |
-
-Default: **L2 or higher in production**
+**Phase 1 decision**: Start with L1 (AssemblyLoadContext). Acceptable for development and staging. Production should target L2 minimum.
 
 ---
 
-# 4. ISOLATION BOUNDARIES
+# 4. L1 — ASSEMBLLYLOADCONTEXT ISOLATION
+
+What it provides:
+- Separate assembly loading (no DLL conflicts)
+- Collectible contexts (unloading support)
+- Dependency isolation per plugin
+- No shared static state between plugins
+
+What it does NOT provide:
+- Memory isolation (shared process heap)
+- True security sandbox
+- Protection against reflection abuse
+- OS-level resource isolation
+
+```csharp
+// Each plugin gets its own collectible ALC
+var context = new PluginLoadContext(pluginPath);
+var assembly = context.LoadFromAssemblyPath(dllPath);
+// ... execute ...
+context.Unload(); // releases assemblies
+```
+
+---
+
+# 5. L2 — PROCESS ISOLATION
+
+What it provides:
+- Separate OS process per plugin execution
+- Memory isolation (separate address space)
+- Crash isolation (plugin crash doesn't affect host)
+- OS-level resource limits (via Job Objects on Windows, cgroups on Linux)
+
+Implementation approach:
+- Host launches child process for each plugin execution
+- Communication via stdin/stdout (JSON-RPC) or named pipes
+- Timeout enforcement at process level (kill on timeout)
+
+---
+
+# 6. L3 — CONTAINER ISOLATION
+
+What it provides:
+- Full filesystem isolation
+- Network policy enforcement
+- Resource limits via cgroups
+- Minimal attack surface (read-only rootfs)
+
+Implementation approach:
+- Each plugin runs in a minimal container image
+- Network disabled by default (enabled per capability)
+- Container killed on timeout
+
+---
+
+# 7. ISOLATION BOUNDARIES
 
 Plugins MUST NOT access:
-
 - Operating System APIs directly
 - File system outside sandbox
-- Network without capability
-- Database without capability
-- Runtime internals
+- Network without NetworkCapability
+- Database without DatabaseCapability
+- Runtime internals (private types, fields)
+- Other plugins' memory or state
 
 ---
 
-# 5. MEMORY ISOLATION
+# 8. MEMORY ISOLATION
 
 Rules:
-
-- No shared static memory
+- No shared static memory between plugins
 - No global singletons across plugins
 - No cross-plugin references
-- Garbage collection is isolated per runtime context
+- Each execution has isolated scope
+
+Note: In L1, memory isolation is enforced by convention (no shared statics). In L2+, it is enforced by the OS.
 
 ---
 
-# 6. EXECUTION ISOLATION
+# 9. THREAD ISOLATION
 
-Each plugin execution:
-
-- Runs in its own ExecutionContext
-- Has its own CancellationToken
-- Has isolated dependency scope
-
----
-
-# 7. THREAD ISOLATION
-
-Rules:
-
-- No shared thread pools between plugins (optional optimization only)
-- No background thread persistence after execution
+- No shared thread pools between plugins
+- No background threads that outlive execution
 - No cross-plugin thread communication
+- CancellationToken propagation required
 
 ---
 
-# 8. DATA ISOLATION
+# 10. DATA ISOLATION
 
-Each plugin:
-
-- Cannot access other plugin memory
-- Cannot read other plugin state
-- Cannot intercept other plugin execution
-
----
-
-# 9. CAPABILITY GATE
-
-All external access MUST go through:
-
-```
-Plugin → Capability Engine → Resource
-```
-
-Direct access is forbidden.
+- Plugins cannot access other plugin's data
+- Storage is namespaced: `{pluginId}/{key}`
+- Database queries are scoped per plugin (where applicable)
+- Cache keys are prefixed: `{pluginId}:{key}`
 
 ---
 
-# 10. NETWORK ISOLATION
-
-Default:
-
-- NO outbound network access
-
-Allowed only if:
-
-- Explicitly granted in manifest
-- Enforced by Capability Engine
-
----
-
-# 11. STORAGE ISOLATION
-
-Plugins:
-
-- Cannot access raw storage
-- Can only use StorageCapability
-
-Storage paths are:
-
-- Virtualized
-- Scoped per plugin
-
----
-
-# 12. PROCESS ISOLATION (OPTIONAL L2+)
-
-If process isolation enabled:
-
-- Each plugin runs in separate process
-- Communication via IPC only
-- Crash isolation guaranteed
-
----
-
-# 13. CONTAINER ISOLATION (L3)
-
-If containerized:
-
-- Each plugin runs in container sandbox
-- Network policies enforced by runtime
-- Filesystem is read-only except allowed volumes
-
----
-
-# 14. SECURITY GUARANTEE
-
-Isolation guarantees:
-
-- No plugin can affect another plugin
-- No plugin can escape runtime boundaries
-- No plugin can access host system directly
-
----
-
-# 15. FAILURE MODE
+# 11. FAILURE MODE
 
 If isolation is violated:
-
-- Execution is terminated immediately
-- Runtime enters safe state
-- Audit log is generated
-- Plugin is marked as compromised
-
----
-
-# 16. PERFORMANCE VS SECURITY TRADEOFF
-
-| Mode | Performance | Security |
-|------|------------|----------|
-| L1 | High | Low |
-| L2 | Medium | Medium |
-| L3 | Low | High |
-| L4 | TBD | Very High |
-
-Production recommendation: **L2/L3 hybrid**
+1. Execution terminated immediately
+2. AssemblyLoadContext unloaded (L1) / Process killed (L2) / Container destroyed (L3)
+3. Audit event generated (SecurityViolationEvent)
+4. Plugin marked for review
 
 ---
 
-# 17. DESIGN PRINCIPLE
+# 12. DESIGN PRINCIPLE
 
 > Isolation is the foundation of trustlessness.
-
-Without isolation, Zero Trust cannot exist.
+> Without isolation, Zero Trust cannot exist.
+> Choose the isolation level that matches your threat model.
 
 ---
 
-# 🏁 END OF PLUGIN ISOLATION MODEL
+# 🏁 END

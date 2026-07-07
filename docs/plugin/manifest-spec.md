@@ -55,6 +55,29 @@ Nó định nghĩa:
     "allow_parallel": false
   },
 
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "orderId": { "type": "string" },
+      "includeDetails": { "type": "boolean", "default": false }
+    },
+    "required": ["orderId"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string" },
+          "total": { "type": "number" }
+        }
+      }
+    }
+  },
+
   "security": {
     "signature_algorithm": "RSA-SHA256",
     "public_key_id": "kms-key-1",
@@ -193,7 +216,91 @@ Controls runtime behavior:
 
 ---
 
-# 9. 🔁 LIFECYCLE CONTROL
+# 9. � INPUT/OUTPUT SCHEMA (OpenAPI Integration)
+
+Optional but recommended. Enables typed Swagger documentation and request validation.
+
+## input_schema
+
+JSON Schema defining the expected request body:
+
+```json
+"input_schema": {
+  "type": "object",
+  "properties": {
+    "orderId": { "type": "string", "description": "Order identifier" },
+    "includeDetails": { "type": "boolean", "default": false }
+  },
+  "required": ["orderId"]
+}
+```
+
+## output_schema
+
+JSON Schema defining the response data structure:
+
+```json
+"output_schema": {
+  "type": "object",
+  "properties": {
+    "order": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "paid", "shipped"] },
+        "total": { "type": "number" }
+      }
+    }
+  }
+}
+```
+
+## Rules:
+
+- Format: JSON Schema (Draft 2020-12 or compatible)
+- If `input_schema` provided → runtime validates request body before execution
+- If `output_schema` provided → Swagger UI shows typed response model
+- If omitted → Swagger shows generic `object` (still functional, just untyped)
+- Declarative extensions: REQUIRED (always has schemas)
+- Code extensions: OPTIONAL but strongly recommended
+
+## OpenAPI behavior:
+
+| Schema declared | Swagger result |
+|----------------|----------------|
+| Both input + output | Fully typed endpoint with request/response models |
+| Only input | Typed request, generic response |
+| Only output | Generic request, typed response |
+| Neither | Generic `object` for both (extension still works) |
+
+## Dynamic OpenAPI generation:
+
+Platform auto-generates an OpenAPI path per active extension:
+
+```yaml
+/api/v1/ext/{extensionId}:
+  post:
+    summary: {manifest.description}
+    requestBody:
+      schema: {manifest.input_schema}
+    responses:
+      200:
+        schema:
+          properties:
+            success: boolean
+            data: {manifest.output_schema}
+            traceId: string
+            durationMs: integer
+```
+
+Swagger updates automatically when:
+- New extension approved
+- Extension revoked (removed from OpenAPI)
+- Extension version updated (schema changes)
+
+---
+
+# 10. �🔁 LIFECYCLE CONTROL
 
 ```json
 "lifecycle": {

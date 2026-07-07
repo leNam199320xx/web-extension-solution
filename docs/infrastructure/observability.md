@@ -2,302 +2,223 @@
 
 ---
 
-# 1. 🎯 MỤC TIÊU
+# 1. PURPOSE
 
-Hệ thống Observability đảm bảo:
-
-- Theo dõi toàn bộ vòng đời plugin execution
-- Truy vết lỗi, performance, security events
-- Hỗ trợ debugging production issues
-- Đảm bảo audit compliance cho zero-trust system
-
----
-
-# 2. 🧠 OBSERVABILITY TRIAD
-
-Hệ thống dựa trên 3 trụ cột:
-
-```
-Logs  → What happened?
-Metrics → How well did it perform?
-Traces → Where did it happen?
-```
+The observability system ensures:
+- Full visibility into plugin execution lifecycle
+- Error tracing, performance tracking, security event monitoring
+- Production debugging support
+- Audit compliance for zero-trust system
 
 ---
 
-# 3. 📌 CORE OBSERVABILITY FIELDS
+# 2. THREE PILLARS
 
-Mọi plugin execution MUST include:
+| Pillar | Question it answers |
+|--------|-------------------|
+| Logs | What happened? |
+| Metrics | How well did it perform? |
+| Traces | Where did it flow? |
 
-- TraceId
-- SpanId
+---
+
+# 3. CORE FIELDS (Required on Every Execution)
+
+- TraceId (distributed trace)
+- SpanId (current span)
+- ExecutionId (unique per execution)
 - PluginId
-- ExtensionId
-- UserId (optional)
-- ExecutionId
+- Version
+- TenantId (if multi-tenant)
+- UserId (if authenticated)
 
 ---
 
-# 4. 🔁 DISTRIBUTED TRACING MODEL
-
-## Flow:
-
-```
-API Request
-    ↓
-Middleware (TraceId 생성)
-    ↓
-Plugin Execution Pipeline
-    ↓
-Capability Calls
-    ↓
-Infrastructure Calls
-    ↓
-Response
-```
-
----
-
-## Trace propagation rule:
-
-> TraceId MUST be passed through every layer
-
----
-
-# 5. 🧾 STRUCTURED LOGGING
-
-## Format:
-
-All logs MUST be JSON structured.
-
----
-
-## Example:
-
-```json
-{
-  "timestamp": "2026-01-01T00:00:00Z",
-  "trace_id": "abc-123",
-  "plugin_id": "payment-service",
-  "event": "execution_started",
-  "level": "info",
-  "message": "Plugin execution started"
-}
-```
-
----
-
-## Log levels:
-
-- INFO → normal execution flow
-- WARN → abnormal behavior
-- ERROR → execution failure
-- CRITICAL → security violation
-
----
-
-# 6. 📊 METRICS MODEL
-
-## Core metrics:
-
-### Execution metrics:
-
-- plugin_execution_duration_ms
-- plugin_execution_success_rate
-- plugin_execution_failure_rate
-
----
-
-### Resource metrics:
-
-- plugin_memory_usage_mb
-- plugin_cpu_usage_ms
-- plugin_timeout_count
-
----
-
-### Security metrics:
-
-- invalid_signature_attempts
-- capability_denied_requests
-- revoked_plugin_execution_attempts
-
----
-
-# 7. 🔍 DISTRIBUTED TRACING DETAILS
+# 4. DISTRIBUTED TRACING
 
 ## Span hierarchy:
 
 ```
 API Request Span
-   ├── Manifest Validation Span
-   ├── Capability Resolution Span
-   ├── Plugin Execution Span
-   │       ├── Database Capability Span
-   │       ├── Network Capability Span
-   └── Response Span
+  ├── Authentication Span
+  ├── Security Validation Span
+  │     ├── Signature Verification Span
+  │     └── Hash Verification Span
+  ├── Capability Resolution Span
+  ├── Plugin Execution Span
+  │     ├── Database Capability Span
+  │     └── Network Capability Span
+  └── Response Span
 ```
 
----
+Each span includes: start time, end time, duration, status, error (if any).
 
-## Each span MUST include:
-
-- Start time
-- End time
-- Duration
-- Status
-- Error (if any)
+Rule: TraceId MUST propagate through every layer.
 
 ---
 
-# 8. 🚨 SECURITY OBSERVABILITY
+# 5. STRUCTURED LOGGING
 
-## Tracked security events:
-
-### 1. Signature violations
-- invalid_signature
-- tampered_manifest
-
----
-
-### 2. Capability violations
-- unauthorized_db_access
-- unauthorized_network_access
-
----
-
-### 3. Runtime abuse
-- timeout_exceeded
-- memory_limit_exceeded
-- infinite_loop_detected
-
----
-
-## Rule:
-
-👉 All security events are immutable logs
-
----
-
-# 9. 🧯 AUDIT LOGGING (IMMUTABLE)
-
-## Properties:
-
-- Append-only
-- Cannot be modified
-- Stored separately from application logs
-
----
-
-## Audit log example:
+All logs MUST be JSON structured:
 
 ```json
 {
-  "audit_id": "audit-001",
-  "plugin_id": "payment-service",
-  "action": "plugin_loaded",
-  "result": "success",
-  "performed_by": "system",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "level": "Information",
+  "traceId": "abc-123",
+  "executionId": "exec-456",
+  "pluginId": "payment-service",
+  "event": "execution_started",
+  "message": "Plugin execution started",
+  "properties": {}
+}
+```
+
+Log levels:
+- **Information** — normal execution flow
+- **Warning** — abnormal but recoverable behavior
+- **Error** — execution failure
+- **Critical** — security violation, system failure
+
+---
+
+# 6. METRICS
+
+## Execution metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `plugin_execution_duration_ms` | Histogram | Execution time distribution |
+| `plugin_execution_total` | Counter | Total executions (labeled by status) |
+| `plugin_execution_active` | Gauge | Currently running executions |
+
+## Resource metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `plugin_memory_usage_mb` | Histogram | Memory per execution |
+| `plugin_timeout_total` | Counter | Timeout count |
+
+## Security metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `security_signature_failures_total` | Counter | Invalid signature attempts |
+| `security_capability_denied_total` | Counter | Capability access denials |
+| `security_revoked_execution_attempts` | Counter | Attempts to run revoked plugins |
+
+---
+
+# 7. SECURITY EVENTS
+
+Tracked and alerted:
+- `invalid_signature` — signature verification failed
+- `hash_mismatch` — SHA-256 doesn't match
+- `capability_violation` — unauthorized access attempt
+- `timeout_exceeded` — plugin ran past limit
+- `revoked_plugin_attempt` — execution of revoked plugin
+
+Rule: Security events are immutable logs, never dropped, always alerted.
+
+---
+
+# 8. AUDIT LOGGING
+
+Properties:
+- Append-only (immutable)
+- Cannot be modified or deleted
+- Stored separately from application logs (dedicated table)
+- Retained per compliance requirements
+
+Example:
+
+```json
+{
+  "auditId": "audit-001",
+  "action": "PluginRevoked",
+  "actor": "admin@company.com",
+  "target": "payment-service:1.0.0",
+  "result": "Success",
   "timestamp": "2026-01-01T00:00:00Z"
 }
 ```
 
+For audit table schema, see `docs/data/database-schema.md`.
+
 ---
 
-# 10. ⚙️ LOG PIPELINE ARCHITECTURE
+# 9. LOG PIPELINE
 
 ```
-Application Logs
-       ↓
-Structured Logger
-       ↓
-Log Enrichment Layer
-       ↓
-Trace Correlation Engine
-       ↓
-Storage (ELK / OpenTelemetry / Loki)
+Application → Serilog (structured) → OpenTelemetry Exporter → Collector → Storage
 ```
 
----
-
-# 11. 🔥 ERROR TRACKING MODEL
-
-## Every error MUST include:
-
-- TraceId
-- PluginId
-- Stack trace (sanitized)
-- Execution context
-- Capability involved (if any)
+Storage options:
+- Elasticsearch (ELK stack)
+- Loki (Grafana stack)
+- Azure Monitor / CloudWatch
 
 ---
 
-## Example:
+# 10. ERROR TRACKING
 
-```json
-{
-  "error": "CapabilityDeniedException",
-  "plugin_id": "payment-service",
-  "capability": "DatabaseCapability",
-  "trace_id": "abc-123",
-  "message": "Plugin attempted unauthorized DB access"
-}
-```
+Every error MUST include:
+- TraceId + ExecutionId
+- PluginId + Version
+- Error code (see `docs/implementation/error-handling.md`)
+- Sanitized message (no internals leaked)
+- Capability involved (if applicable)
 
 ---
 
-# 12. ⏱ PERFORMANCE MONITORING
+# 11. PERFORMANCE MONITORING (KPIs)
 
-## Monitored KPIs:
-
-- P95 plugin execution time
-- P99 latency per capability
+- P50, P95, P99 plugin execution time
+- P99 latency per capability type
+- Timeout frequency per plugin
 - Memory usage distribution
-- Timeout frequency
 
 ---
 
-# 13. 📡 REAL-TIME MONITORING
+# 12. ALERTING RULES
 
-System SHOULD support:
-
-- Live plugin execution dashboard
-- Active plugin count
-- Failure rate alerts
-- Security incident alerts
-
----
-
-# 14. 🚨 ALERTING RULES
-
-## Trigger alerts when:
-
-- Signature validation failures spike
-- Plugin execution failure rate > threshold
-- Memory limit exceeded frequently
+Trigger alerts when:
+- Signature validation failures > 5/minute
+- Plugin execution failure rate > 10%
+- Timeout rate > 5%
 - Unauthorized access attempts detected
+- System memory pressure high
 
 ---
 
-# 15. 🧠 DESIGN PRINCIPLES
+# 13. IMPLEMENTATION (ASP.NET Core)
 
-- Observability is mandatory, not optional
-- Logs must be structured
-- Trace must propagate everywhere
-- Security events are first-class citizens
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource("PluginRuntime")
+        .AddOtlpExporter())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddMeter("PluginRuntime")
+        .AddOtlpExporter());
+
+builder.Host.UseSerilog((ctx, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.OpenTelemetry());
+```
 
 ---
 
-# 16. 🎯 FINAL GOAL
+# 14. DESIGN PRINCIPLE
 
-👉 Enable full visibility into:
-
-- What plugin ran
-- What it did
-- What it accessed
-- How it behaved
-- Whether it violated security rules
+> Observability is mandatory, not optional.
+> Every execution is fully traceable.
+> Security events are first-class citizens.
 
 ---
 
-# 🏁 END OF OBSERVABILITY MODEL
+# 🏁 END

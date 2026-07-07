@@ -2,32 +2,25 @@
 
 ---
 
-# 1. 🎯 MỤC TIÊU
+# 1. PURPOSE
 
-Hệ thống Capability được thiết kế để:
+The Capability System ensures:
+- Complete control over plugin resource access
+- Elimination of direct infrastructure access
+- Zero-Trust runtime execution
 
-- Kiểm soát toàn bộ quyền truy cập của plugin
-- Loại bỏ hoàn toàn direct access tới infrastructure
-- Thay thế permission model truyền thống bằng capability proxy
-- Đảm bảo Zero-Trust runtime execution
+For capability interface contracts (code), see `docs/implementation/capability-interfaces.md`.
+For manifest permission mapping, see `docs/plugin/manifest-spec.md`.
 
 ---
 
-# 2. 🧠 CORE IDEA
+# 2. CORE IDEA
 
-## Nguyên tắc cốt lõi:
-
-> Plugin KHÔNG BAO GIỜ truy cập tài nguyên trực tiếp
-
-Thay vào đó:
+> Plugins NEVER access resources directly.
 
 ```
 Plugin → Capability Interface → Core Proxy → Infrastructure
 ```
-
----
-
-## Ý nghĩa:
 
 - Plugin = untrusted code
 - Capability = controlled gateway
@@ -35,25 +28,22 @@ Plugin → Capability Interface → Core Proxy → Infrastructure
 
 ---
 
-# 3. 🚨 ZERO TRUST RULE
+# 3. ZERO TRUST RULE
 
-## MUST:
+**MUST:**
+- All resource access goes through capabilities
+- No "hidden access path" exists
+- No direct dependency on DB / Network / OS from plugin code
 
-- Mọi hành vi truy cập tài nguyên phải qua capability
-- Không có “hidden access path”
-- Không có direct dependency tới DB / Network / OS
-
----
-
-## NEVER:
-
-- Plugin tự mở DB connection
-- Plugin tự gọi HTTP client raw
-- Plugin truy cập file system trực tiếp
+**NEVER:**
+- Plugin opens DB connection directly
+- Plugin uses raw HttpClient
+- Plugin accesses file system directly
+- Plugin uses reflection to reach internal services
 
 ---
 
-# 4. 🧱 CAPABILITY ARCHITECTURE
+# 4. ARCHITECTURE
 
 ```
                 ┌────────────────────┐
@@ -62,207 +52,123 @@ Plugin → Capability Interface → Core Proxy → Infrastructure
                           │
                           ▼
             ┌──────────────────────────┐
-            │   Capability Context    │
-            │ (Injected by Core)      │
+            │   PluginExecutionContext │
+            │   (Injected by Core)    │
             └─────────┬────────────────┘
                       │
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-┌────────────┐ ┌────────────┐ ┌────────────┐
-│ Database   │ │ Network    │ │ Storage    │
-│ Capability │ │ Capability │ │ Capability │
-└────────────┘ └────────────┘ └────────────┘
+        ┌─────────────┼─────────────┐──────────┐
+        ▼             ▼             ▼           ▼
+┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────┐
+│ Database   │ │ Network    │ │ Storage    │ │ Cache    │
+│ Capability │ │ Capability │ │ Capability │ │Capability│
+└────────────┘ └────────────┘ └────────────┘ └──────────┘
 ```
 
 ---
 
-# 5. 🔐 CAPABILITY CONTRACT
+# 5. CAPABILITY ASSIGNMENT (From Manifest)
 
-## Interface base:
-
-```csharp
-public interface ICapability
-{
-    string Name { get; }
-}
-```
-
----
-
-## Example: Database Capability
-
-```csharp
-public interface IDatabaseCapability : ICapability
-{
-    Task<List<T>> QueryAsync<T>(string query);
-}
-```
-
----
-
-## Example: Network Capability
-
-```csharp
-public interface INetworkCapability : ICapability
-{
-    Task<HttpResponseMessage> SendAsync(HttpRequestMessage request);
-}
-```
-
----
-
-# 6. 📄 CAPABILITY ASSIGNMENT (FROM MANIFEST)
-
-Capabilities are defined in Signed Manifest:
+Capabilities are declared in the Signed Manifest:
 
 ```json
 {
-  "permissions": [
-    "db:read",
-    "network:outbound"
-  ]
+  "permissions": ["db:read", "network:outbound"],
+  "capabilities": ["DatabaseCapability", "NetworkCapability"]
 }
 ```
 
----
-
-## RULE:
-
-👉 If not listed in manifest → capability is NOT injected
+Rule: If not listed in manifest → capability is NOT injected into context.
 
 ---
 
-# 7. 🧠 CAPABILITY RESOLUTION FLOW
+# 6. CAPABILITY RESOLUTION FLOW
 
 ```
 1. Load Manifest
-2. Verify Signature
-3. Read Permissions List
-4. Map Permissions → Capability Implementations
-5. Inject into PluginContext
+2. Verify Signature (security pipeline)
+3. Read permissions list
+4. Map permissions → capability implementations
+5. Create scoped capability instances
+6. Inject into PluginExecutionContext
 ```
 
 ---
 
-# 8. 🔥 CAPABILITY INJECTION MODEL
-
-## PluginContext:
+# 7. USAGE IN PLUGIN
 
 ```csharp
-public class PluginContext
+public async Task<PluginResult> Execute(IPluginExecutionContext context)
 {
-    public IReadOnlyDictionary<string, ICapability> Capabilities { get; }
+    var db = context.Capabilities["Database"] as IDatabaseCapability;
+    var users = await db.QueryAsync<User>(
+        "SELECT * FROM users WHERE active = @active",
+        new { active = true },
+        context.CancellationToken);
+
+    return PluginResult.Ok(users);
 }
 ```
 
 ---
 
-## Usage in plugin:
+# 8. SECURITY ENFORCEMENT
 
-```csharp
-var db = context.Capabilities["Database"] as IDatabaseCapability;
-
-var data = await db.QueryAsync<User>("SELECT * FROM Users");
-```
-
----
-
-# 9. 🧯 SECURITY ENFORCEMENT
-
-## Core rules:
-
-- Capability injection is read-only
-- Plugin cannot modify granted capabilities
+- Capability injection is read-only (plugin cannot modify)
 - No runtime escalation allowed
+- Each capability call is logged
+- Rate limiting optional per capability
+- Error isolation per plugin (one plugin's failure doesn't affect another)
 
 ---
 
-## Enforcement layer:
-
-- ManifestValidator
-- CapabilityResolver
-- SecurityEngine
-
----
-
-# 10. 🚫 FORBIDDEN BEHAVIORS
-
-## ❌ Direct access:
+# 9. FORBIDDEN BEHAVIORS
 
 ```csharp
-new SqlConnection()
-HttpClient.Send()
-File.ReadAllText()
+// ❌ FORBIDDEN — direct access
+new SqlConnection(connectionString);
+new HttpClient().SendAsync(request);
+File.ReadAllText(path);
+
+// ❌ FORBIDDEN — bypass attempts
+typeof(InternalService).GetMethod("Execute").Invoke(...)
+ServiceLocator.GetService<IDbContext>()
 ```
 
 ---
 
-## ❌ Bypass attempts:
-
-- Reflection to access internal services
-- Service locator abuse
-- Static global state injection
-
----
-
-# 11. ⏱ RUNTIME SAFETY
-
-Each capability call is controlled:
-
-- Timeout enforced
-- Rate limiting optional
-- Logging mandatory
-- Error isolation per plugin
-
----
-
-# 12. 🧱 EXTENSIBILITY MODEL
+# 10. EXTENSIBILITY
 
 New capabilities can be added:
+- `IQueueCapability`
+- `INotificationCapability`
+- Custom business capabilities
 
-- IQueueCapability
-- ICacheCapability
-- IStorageCapability
-
----
-
-## RULE:
-
-👉 New capability MUST:
-
-- Be registered in Core
-- Be validated in Manifest schema
-- Be enforced via CapabilityResolver
+Adding a new capability requires:
+1. Define interface in `Capabilities.Abstractions`
+2. Implement in dedicated project
+3. Register in Core DI container
+4. Add to manifest schema validation
+5. Update capability resolver
 
 ---
 
-# 13. 🔐 SECURITY GUARANTEE
-
-## System guarantees:
+# 11. SECURITY GUARANTEE
 
 - Plugin cannot escape sandbox via capabilities
-- No capability = no access
-- All access paths are deterministic
+- No capability = no access (deny by default)
+- All access paths are deterministic and auditable
+- Capabilities are scoped per plugin (namespaced data)
 
 ---
 
-# 14. 🎯 DESIGN PRINCIPLES
+# 12. DESIGN PRINCIPLES
 
 - Explicit > implicit
 - Deny by default
 - Least privilege always
 - No hidden access paths
+- Every access is logged
 
 ---
 
-# 15. 🚀 FINAL MODEL SUMMARY
-
-Capability system đảm bảo:
-
-- Plugin chỉ làm đúng những gì được cấp quyền
-- Core kiểm soát toàn bộ IO operations
-- Security không phụ thuộc plugin code
-
----
-
-# 🏁 END OF CAPABILITY SYSTEM
+# 🏁 END

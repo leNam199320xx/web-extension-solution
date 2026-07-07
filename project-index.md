@@ -4,7 +4,6 @@
 > **Single Source of Navigation**
 >
 > This document is the primary entry point for understanding the repository.
->
 > Read this document first before exploring other documentation.
 
 ---
@@ -14,8 +13,7 @@
 The Metadata-Driven Secure Plugin Runtime is an enterprise-grade platform that enables
 dynamic deployment and execution of plugins without restarting the Core Runtime.
 
-The platform is designed around:
-
+Designed around:
 - Zero Trust
 - Signed Manifest
 - Capability-Based Security
@@ -28,21 +26,14 @@ The platform is designed around:
 # 2. DOCUMENT HIERARCHY
 
 ```
-README
-    │
-    ▼
-PROJECT-INDEX
-    │
-    ├──────── docs
-    ├──────── ai
-    └──────── .github
+README.md                → What the project is
+    ↓
+project-index.md         → How the repository is organized (you are here)
+    ↓
+docs/index.md            → How the system works (technical docs)
+    ↓
+ai/index.md              → AI behavior rules
 ```
-
-README explains **what** the project is.
-
-PROJECT-INDEX explains **how the repository is organized**.
-
-The `/docs` folder explains **how the system works**.
 
 ---
 
@@ -50,220 +41,88 @@ The `/docs` folder explains **how the system works**.
 
 ## Step 1 — Product Overview
 
-```
-README.md
-```
-
----
+- `readme.md`
 
 ## Step 2 — Repository Navigation
 
-```
-PROJECT-INDEX.md
-```
-
----
+- `project-index.md`
 
 ## Step 3 — Architecture
 
-```
-docs/architecture.md
-docs/runtime-engine-spec.md
-docs/runtime-api-spec.md
-```
-
----
+- `docs/architecture/architecture.md`
+- `docs/architecture/execution-flow.md`
+- `docs/architecture/runtime-engine-spec.md`
+- `docs/architecture/runtime-api-spec.md`
 
 ## Step 4 — Security
 
-```
-docs/security-model.md
-docs/threat-model.md
-docs/security-enforcement-spec.md
-```
-
----
+- `docs/security/security-model.md`
+- `docs/security/security-enforcement-spec.md`
+- `docs/security/capability-system.md`
+- `docs/security/threat-model.md`
 
 ## Step 5 — Plugin System
 
-```
-docs/plugin-lifecycle.md
-docs/plugin-sdk-spec.md
-docs/manifest-spec.md
-docs/capability-system.md
-docs/versioning-strategy.md
-```
+- `docs/plugin/plugin-lifecycle.md`
+- `docs/plugin/plugin-sdk-spec.md`
+- `docs/plugin/manifest-spec.md`
+- `docs/plugin/plugin-isolation.md`
+- `docs/plugin/versioning-strategy.md`
+- `docs/architecture/verification-engine-spec.md`
+- `docs/architecture/permission-review-spec.md`
+- `docs/architecture/extension-ecosystem.md`
+- `docs/architecture/inter-extension-spec.md`
+
+## Step 6 — Runtime
+
+- `docs/runtime/execution-model.md`
+- `docs/runtime/plugin-execution-context.md`
+- `docs/runtime/resource-governance.md`
+- `docs/runtime/scheduler.md`
+
+## Step 7 — Data
+
+- `docs/data/data-model.md`
+- `docs/data/database-schema.md`
+- `docs/data/event-model.md`
+
+## Step 8 — Infrastructure
+
+- `docs/infrastructure/deployment-model.md`
+- `docs/infrastructure/observability.md`
+- `docs/infrastructure/non-functional-requirements.md`
+
+## Step 9 — Implementation (for coding)
+
+- `docs/implementation/solution-structure.md`
+- `docs/implementation/dependency-manifest.md`
+- `docs/implementation/capability-interfaces.md`
+- `docs/implementation/error-handling.md`
+- `docs/implementation/configuration-model.md`
+- `docs/implementation/testing-strategy.md`
+
+## Step 10 — Requirements
+
+- `docs/requirements/catalog/Requirements-Catalog.md`
+- `docs/requirements/traceability-matrix.md`
+
+## Step 11 — Standards
+
+- `docs/standards/extension-development-standard.md`
+- `docs/standards/sdk-development-standard.md`
+
+## Step 12 — Architecture Decisions
+
+- `docs/adr/`
+
+## Step 13 — AI Layer
+
+- `ai/index.md`
+- `.github/copilot-instructions.md`
 
 ---
 
-## Step 6 — Infrastructure
-
-```
-docs/deployment-model.md
-docs/non-functional-requirements.md
-docs/observability.md
-```
-
----
-
-## Step 7 — Domain
-
-```
-docs/data-model.md
-```
-
----
-
-## Step 8 — Architecture Decisions
-
-```
-docs/adr/
-```
-
----
-
-## Step 9 — AI Layer
-
-```
-ai/
-.github/
-```
-
----
-
-# 4. DOCUMENT CATEGORIES
-
-## 📘 Product
-
-Purpose:
-
-Explain the project.
-
-Files:
-
-- README.md
-- roadmap.md
-
----
-
-## 🏗 Architecture
-
-Purpose:
-
-Describe runtime architecture.
-
-Files:
-
-- architecture.md
-- runtime-engine-spec.md
-- runtime-api-spec.md
-
----
-
-## 🔐 Security
-
-Purpose:
-
-Describe Zero Trust implementation.
-
-Files:
-
-- security-model.md
-- threat-model.md
-- security-enforcement-spec.md
-
----
-
-## 🔌 Plugin
-
-Purpose:
-
-Describe plugin ecosystem.
-
-Files:
-
-- plugin-sdk-spec.md
-- plugin-lifecycle.md
-- manifest-spec.md
-- capability-system.md
-- versioning-strategy.md
-
----
-
-## 🚀 Infrastructure
-
-Purpose:
-
-Describe deployment and operations.
-
-Files:
-
-- deployment-model.md
-- observability.md
-- non-functional-requirements.md
-
----
-
-## 🗄 Data
-
-Purpose:
-
-Describe persistence model.
-
-Files:
-
-- data-model.md
-
----
-
-## 📝 ADR
-
-Purpose:
-
-Explain why architectural decisions were made.
-
-Files:
-
-- docs/adr/
-
----
-
-## 🤖 AI
-
-Purpose:
-
-Guide AI-assisted development.
-
-Files:
-
-```
-ai/
-```
-
-Contains:
-
-- rules.md
-- coding-guidelines.md
-- output-format.md
-- anti-patterns.md
-
----
-
-## ⚙ GitHub Copilot
-
-Purpose:
-
-Repository-level AI instructions.
-
-Files:
-
-```
-.github/copilot-instructions.md
-```
-
----
-
-# 5. ARCHITECTURE LAYERS
+# 4. ARCHITECTURE LAYERS
 
 ```
 +----------------------------------------------------+
@@ -273,120 +132,91 @@ Files:
 
 +----------------------------------------------------+
 |             Architecture Layer                     |
-| docs/*.md                                          |
+| docs/architecture/ + docs/security/               |
 +----------------------------------------------------+
 
 +----------------------------------------------------+
-|              Security Layer                        |
-| Zero Trust / Manifest / Capability                 |
+|              Plugin Layer                          |
+| docs/plugin/ + docs/runtime/                      |
 +----------------------------------------------------+
 
 +----------------------------------------------------+
-|             Runtime Layer                          |
-| Core Runtime (.NET 10)                             |
+|             Data & Infrastructure Layer            |
+| docs/data/ + docs/infrastructure/                 |
 +----------------------------------------------------+
 
 +----------------------------------------------------+
-|             Infrastructure Layer                   |
-| PostgreSQL / Redis / KMS / Storage                 |
+|             Implementation Layer                   |
+| docs/implementation/ + src/                       |
 +----------------------------------------------------+
 ```
 
 ---
 
-# 6. SINGLE SOURCE OF TRUTH
+# 5. SINGLE SOURCE OF TRUTH
 
-Each topic has exactly one authoritative document.
-
-| Topic | Source |
-|---------|--------|
-| Architecture | architecture.md |
-| Runtime | runtime-engine-spec.md |
-| Runtime API | runtime-api-spec.md |
-| Plugin Lifecycle | plugin-lifecycle.md |
-| Manifest | manifest-spec.md |
-| Capability | capability-system.md |
-| Security | security-model.md |
-| Threats | threat-model.md |
-| Security Enforcement | security-enforcement-spec.md |
-| Versioning | versioning-strategy.md |
-| Deployment | deployment-model.md |
-| Data Model | data-model.md |
-| Observability | observability.md |
-| NFR | non-functional-requirements.md |
-| ADR | docs/adr/ |
-
-Duplicate documentation should be avoided.
+| Topic | Authoritative Document |
+|-------|----------------------|
+| Architecture | `docs/architecture/architecture.md` |
+| Execution Pipeline | `docs/architecture/execution-flow.md` |
+| Runtime Components | `docs/architecture/runtime-engine-spec.md` |
+| API Endpoints | `docs/architecture/runtime-api-spec.md` |
+| Security Model | `docs/security/security-model.md` |
+| Validation Pipeline | `docs/security/security-enforcement-spec.md` |
+| Capability System | `docs/security/capability-system.md` |
+| Plugin Lifecycle | `docs/plugin/plugin-lifecycle.md` |
+| Manifest | `docs/plugin/manifest-spec.md` |
+| Isolation | `docs/plugin/plugin-isolation.md` |
+| Execution Model | `docs/runtime/execution-model.md` |
+| Data Model | `docs/data/data-model.md` |
+| Database Schema | `docs/data/database-schema.md` |
+| Deployment | `docs/infrastructure/deployment-model.md` |
+| Observability | `docs/infrastructure/observability.md` |
+| Error Handling | `docs/implementation/error-handling.md` |
+| Solution Structure | `docs/implementation/solution-structure.md` |
+| Extension Standards | `docs/standards/extension-development-standard.md` |
+| SDK Standards | `docs/standards/sdk-development-standard.md` |
+| Inter-Extension | `docs/architecture/inter-extension-spec.md` |
+| Extension Ecosystem | `docs/architecture/extension-ecosystem.md` |
+| Verification Engine | `docs/architecture/verification-engine-spec.md` |
+| Permission Review | `docs/architecture/permission-review-spec.md` |
 
 ---
 
-# 7. IMPLEMENTATION ROADMAP
-
-Current project maturity:
+# 6. IMPLEMENTATION STATUS
 
 ```
-Architecture
-████████████████████ 100%
-
-Specification
-████████████████████ 100%
-
-Implementation
-□□□□□□□□□□□□□□ 0%
-
-Testing
-□□□□□□□□□□□□□□ 0%
-
-Production
-□□□□□□□□□□□□□□ 0%
+Architecture & Specification  ████████████████████ 100%
+Implementation                □□□□□□□□□□□□□□□□□□□□   0%
+Testing                       □□□□□□□□□□□□□□□□□□□□   0%
+Production                    □□□□□□□□□□□□□□□□□□□□   0%
 ```
 
-The next phase is implementation.
+Next phase: Implementation.
 
 ---
 
-# 8. AI ENTRY POINT
-
-AI assistants should read documents in this order:
-
-1. PROJECT-INDEX.md
-2. README.md
-3. docs/INDEX.md
-4. ai/INDEX.md
-5. .github/copilot-instructions.md
-
-Do not generate implementation that contradicts the documented architecture.
-
----
-
-# 9. GOLDEN PRINCIPLES
-
-The project follows these principles:
+# 7. GOLDEN PRINCIPLES
 
 - Security First
 - Zero Trust
 - Stateless Runtime
 - Capability-Based Access
 - Manifest-Driven Execution
-- Explicit Versioning
 - Fail Closed
 - Immutable Audit
-- AI-Friendly Repository
+- Explicit Versioning
 
 ---
 
-# 10. FINAL NOTE
-
-This repository is an **architecture-first project**.
-
-Documentation defines the system.
-
-Implementation must follow the documentation.
+# 8. CONFLICT RESOLUTION
 
 If implementation conflicts with documentation:
+> Documentation is the source of truth until an approved ADR updates it.
 
-> Documentation is considered the source of truth until an approved Architecture Decision Record (ADR) updates it.
+If documents conflict with each other:
+> `docs/security/security-model.md` always takes precedence.
 
 ---
 
-# 🏁 END OF PROJECT INDEX
+# 🏁 END

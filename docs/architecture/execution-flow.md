@@ -5,220 +5,186 @@
 
 # 1. PURPOSE
 
-This document describes the **end-to-end execution flow** of a plugin request inside the Core Runtime.
+Describes the end-to-end execution flow of a plugin request. This is the single authoritative document for the pipeline sequence.
 
-It defines:
-
-- Request lifecycle
-- Validation steps
-- Security enforcement points
-- Capability resolution
-- Execution pipeline
+Other documents reference this flow:
+- `docs/architecture/runtime-engine-spec.md` (components)
+- `docs/security/security-enforcement-spec.md` (validation stages)
+- `docs/runtime/resource-governance.md` (limits enforcement)
 
 ---
 
-# 2. HIGH LEVEL FLOW
+# 2. HIGH-LEVEL FLOW
 
 ```
-Client → API → Runtime → Validation → Capability → Execution → Response
+Client → API Gateway → Scheduler → Security Pipeline → Plugin Loader → Execution → Response
 ```
 
-Every request MUST pass through all stages.
-
-Failure at any stage = immediate termination.
+Every request MUST pass through all stages. Failure at any stage = immediate termination.
 
 ---
 
-# 3. DETAILED EXECUTION PIPELINE
+# 3. DETAILED PIPELINE
 
 ## Step 1 — API Request
 
-Client sends:
-
 ```
-POST /execute
+POST /api/v1/execute/{pluginId}
 ```
 
-Payload:
-
-- PluginId
-- Version
-- Input data
-- CorrelationId
+API layer:
+- Validates request schema (JSON format, required fields)
+- Authenticates caller (JWT Bearer)
+- Generates TraceId (if not provided)
+- Creates ExecutionRequest DTO
 
 ---
 
-## Step 2 — Runtime Entry
+## Step 2 — Scheduling
 
-Core Runtime:
+Scheduler:
+- Checks concurrency limits
+- Enqueues with priority
+- Returns 429 if overloaded
 
-- Validates request schema
-- Assigns TraceId
-- Initializes Execution Context
+See `docs/runtime/scheduler.md` for queue implementation.
 
 ---
 
 ## Step 3 — Manifest Resolution
 
 Runtime loads:
-
-- PluginVersion
+- PluginVersion record from database
 - Signed Manifest
-- Stored metadata
+- Plugin binary location
 
-Checks:
-
-- Exists
-- Not revoked
-- Not expired
+If plugin not found or not in `Approved` status → reject with `API-004`.
 
 ---
 
 ## Step 4 — Security Validation Pipeline
 
+Full validation sequence (see `docs/security/security-enforcement-spec.md`):
+
 ```
-1. Validate Manifest Schema
-2. Verify Digital Signature
-3. Verify SHA-256 hash
-4. Check Revocation List
-5. Validate Core Version compatibility
+Schema Validation → Expiration Check → SHA-256 → Signature → Revocation → Version Compat → Capability Mapping
 ```
 
-If any step fails:
-
-→ Execution is rejected (fail closed)
+Any failure → execution rejected. No partial validation.
 
 ---
 
 ## Step 5 — Capability Resolution
 
-Runtime extracts:
+- Extract permissions from manifest
+- Map permissions to capability implementations
+- Create scoped capability instances for this execution
+- Inject into PluginExecutionContext
 
-- Required capabilities from manifest
-
-Then:
-
-```
-Capability Engine → Permission Check
-```
-
-Rules:
-
-- Deny by default
-- Explicit allow only
-- No runtime elevation
+See `docs/implementation/capability-interfaces.md`.
 
 ---
 
-## Step 6 — Resource Allocation
+## Step 6 — Plugin Loading
 
-Runtime enforces:
+- Load assembly via isolated AssemblyLoadContext
+- Resolve entry class implementing `IPlugin`
+- Validate entry point exists
 
-- CPU quota
-- Memory limit
-- Execution timeout
-- Thread isolation
-
-If exceeded:
-
-→ Execution cancelled
+See `docs/plugin/plugin-loading.md`.
 
 ---
 
-## Step 7 — Plugin Load
+## Step 7 — Execution
 
-Plugin is loaded via:
+- Create `IPluginExecutionContext` with capabilities, logger, cancellation token
+- Call `plugin.Execute(context)` under resource governance
+- Timeout enforcement via CancellationToken
 
-- Isolated loader (AssemblyLoadContext / container / WASM)
-
-Rules:
-
-- No direct system access
-- No global state
-- No reflection bypass
+See `docs/runtime/resource-governance.md`.
 
 ---
 
-## Step 8 — Execution
+## Step 8 — Result Capture
 
-Runtime injects:
-
-```
-PluginExecutionContext
-```
-
-Plugin executes:
-
-```
-HandleAsync(context)
-```
+Collect:
+- Plugin return value (PluginResult)
+- Execution duration
+- Memory usage (approximate)
+- Any exceptions
 
 ---
 
-## Step 9 — Result Capture
+## Step 9 — Observability Emit
 
-Runtime collects:
+Emit regardless of success/failure:
+- TraceId, ExecutionId, PluginId
+- Duration, Status
+- Error code (if failed)
+- Resource usage metrics
 
-- Output
-- Logs
-- Metrics
-- Errors
-
----
-
-## Step 10 — Observability Emit
-
-Emit:
-
-- TraceId
-- ExecutionId
-- Duration
-- Status
-- ErrorCode
+See `docs/infrastructure/observability.md`.
 
 ---
 
-## Step 11 — Response Return
+## Step 10 — Response
 
-Return to client:
-
-- Result
-- Metadata
-- TraceId
+Map ExecutionResult to HTTP response:
+- Success → 200 with data
+- Plugin error → 500 with structured error
+- Security error → 403
+- Timeout → 504
+- Validation error → 400
 
 ---
 
 # 4. FAILURE HANDLING
 
 Any failure triggers:
+1. Execution stop (immediate)
+2. Resource cleanup (CancellationToken fired, context disposed)
+3. Audit event generated
+4. Structured error returned
 
-- Execution stop
-- Resource cleanup
-- Audit log creation
-- Error reporting
-
-No partial trust allowed.
+No partial trust. No partial execution results.
 
 ---
 
 # 5. SECURITY CHECKPOINTS
 
 | Stage | Enforcement |
-|------|-------------|
-| Entry | Schema validation |
-| Manifest | Signature verification |
-| Capability | Permission check |
+|-------|-------------|
+| API Entry | Authentication (JWT) |
+| Manifest | Schema + Signature + Hash |
+| Capability | Permission mapping |
 | Execution | Resource limits |
-| Output | Sanitization |
+| Response | No internal details leaked |
 
 ---
 
-# 6. DESIGN PRINCIPLE
+# 6. SEQUENCE DIAGRAM
+
+```
+Client          API         Scheduler      SecurityPipeline    Loader      Plugin      Observability
+  │               │              │                │               │           │              │
+  │──POST /execute──▶│           │                │               │           │              │
+  │               │──Enqueue────▶│                │               │           │              │
+  │               │              │──Validate─────▶│               │           │              │
+  │               │              │                │──OK──────────▶│           │              │
+  │               │              │                │               │──Load────▶│              │
+  │               │              │                │               │           │──Execute───▶ │
+  │               │              │                │               │           │◀──Result──── │
+  │               │              │                │               │           │              │──Emit
+  │◀──Response────│              │                │               │           │              │
+```
+
+---
+
+# 7. DESIGN PRINCIPLE
 
 > Execution is a pipeline of enforced trust boundaries.
-
-No step can be skipped.
+> No step can be skipped. No shortcut exists.
 
 ---
 
-# 🏁 END OF EXECUTION FLOW
+# 🏁 END

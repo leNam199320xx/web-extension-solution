@@ -61,44 +61,70 @@ Unload / Update / Revoke
 
 ---
 
-# 4. 🔍 PHASE 2 - VALIDATION
+# 4. 🔍 PHASE 2 - VERIFICATION
 
-## 4.1 Static Checks
+Automated verification via the Verification Engine (see `docs/architecture/verification-engine-spec.md`).
 
-- Schema validation (manifest)
-- File integrity check
-- SHA-256 hash generation
+## Pipeline stages:
 
----
+1. Structure Validation — package format, file existence, size limits
+2. Manifest Validation — schema, fields, permission format
+3. Static Analysis (IL Scan) — forbidden APIs, reflection, threading abuse
+4. Dependency Audit — blacklisted packages, CVE vulnerabilities
+5. Security Scan — secrets detection, credential patterns
+6. Standards Compliance — naming, docs, test coverage
+7. Sandbox Execution (optional) — load + execute in isolated environment
 
-## 4.2 Security Scanning
+## Permission extraction:
 
-- SAST (Static Analysis)
-- Dependency vulnerability scan
-- Secret detection
+- Parse `manifest.json` permissions array
+- Parse `permissions.json` (if included) for justifications
+- Auto-classify risk level per permission (Low / Medium / High / Critical)
+- Generate Permission Review Summary
 
----
+See `docs/architecture/permission-review-spec.md` for details.
 
 ## Result:
 
-- PASS → move to approval
-- FAIL → reject immediately
+- PASS → move to approval (with permission summary attached)
+- PASS WITH WARNINGS → move to approval (warnings flagged for reviewer)
+- FAIL → rejected immediately with detailed report sent to developer
+
+Standards enforced: see `docs/standards/extension-development-standard.md`.
 
 ---
 
 # 5. 🧾 PHASE 3 - APPROVAL
 
+## Permission Review:
+
+Reviewer sees structured permission summary:
+- List of all requested permissions with risk levels
+- Justification for each permission (from `permissions.json`)
+- Auto-generated flags (write-access, external-api, pii-access, wildcard, etc.)
+- Permission diff vs previous version (if upgrade)
+- Verification engine result summary
+
+See `docs/architecture/permission-review-spec.md` for full reviewer interface.
+
 ## Actions:
 
-- Manual admin review (optional)
-- Policy-based auto approval (optional)
+- **Approve** — all permissions accepted
+- **Approve with conditions** — accepted with requirements for next version
+- **Reject** — specify which permissions are denied and why
+- **Request info** — ask developer for clarification on specific permissions
 
----
+## Auto-approval (if enabled):
+
+- All permissions Low risk + trusted publisher → auto-approve
+- Same permissions as previous approved version → auto-approve
+- Any Critical permission → NEVER auto-approve
 
 ## Security enforcement:
 
 - MFA required for admin approval
 - Immutable audit log
+- Review decision stored in `permission_reviews` table
 
 ---
 

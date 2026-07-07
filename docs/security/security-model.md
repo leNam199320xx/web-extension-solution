@@ -2,340 +2,165 @@
 
 ---
 
-# 1. 🎯 MỤC TIÊU BẢO MẬT
+# 1. SECURITY OBJECTIVE
 
-Hệ thống này được thiết kế để:
+The system is designed to:
+- Execute untrusted plugin code safely
+- Prevent privilege escalation
+- Protect core runtime from plugin compromise
+- Ensure all behavior is governed by metadata
 
-- Thực thi plugin không đáng tin cậy (untrusted code)
-- Ngăn chặn privilege escalation
-- Bảo vệ core runtime khỏi plugin compromise
-- Đảm bảo mọi hành vi đều được kiểm soát qua metadata
-
-👉 Mô hình: **Zero Trust by Default**
-
----
-
-# 2. 🧠 ZERO TRUST PRINCIPLE
-
-## Core rule:
-
-> Không tin bất kỳ plugin nào, kể cả khi đã được approve
+Model: **Zero Trust by Default**.
 
 ---
 
-## Áp dụng:
+# 2. ZERO TRUST PRINCIPLE
 
-- Mọi plugin đều bị validate lại khi runtime
-- Mọi request đều phải qua security gateway
-- Mọi quyền đều phải explicit trong manifest
+> No plugin is trusted, even after approval.
 
----
-
-# 3. 🚨 THREAT MODEL
-
-## 3.1 Plugin Threats
-
-### ❌ Code Injection
-- Plugin bị sửa DLL sau khi approve
-- Payload độc hại được inject runtime
-
-### ❌ Privilege Escalation
-- Plugin cố truy cập DB / OS / Network trực tiếp
-
-### ❌ Data Exfiltration
-- Plugin gửi dữ liệu ra ngoài không kiểm soát
-
-### ❌ Resource Abuse
-- Infinite loop / memory leak / CPU spike
+- Every plugin is re-validated at runtime
+- Every request passes through security gateway
+- Every permission must be explicit in manifest
+- Trust is never cached or carried forward
 
 ---
 
-## 3.2 Core System Threats
+# 3. SECURITY LAYERS
 
-### ❌ Loader Exploit
-- AssemblyLoadContext abuse
-- Reflection bypass security checks
+The system enforces security at six layers:
 
-### ❌ Signature Forgery
-- Fake manifest signature
-- Key compromise
-
-### ❌ Replay Attack
-- Reuse old manifest version
-
----
-
-## 3.3 Infrastructure Threats
-
-- Compromise KMS / Key Vault
-- Tampering plugin repository
-- Log injection attacks
+| Layer | Responsibility | Document |
+|-------|---------------|----------|
+| 1. API Gateway | Authentication, rate limiting | `authentication-model.md` |
+| 2. Manifest Validation | Schema, expiration, compatibility | `security-enforcement-spec.md` |
+| 3. Integrity Verification | SHA-256 + digital signature | `security-enforcement-spec.md` |
+| 4. Capability Enforcement | Deny-by-default access control | `capability-system.md` |
+| 5. Runtime Isolation | ALC / Process / Container | `plugin-isolation.md` |
+| 6. Observability & Audit | Immutable logging, alerting | `observability.md` |
 
 ---
 
-# 4. 🔐 SECURITY LAYERS
+# 4. THREAT MODEL (Summary)
 
-## Layer 1 - API Gateway Security
+The system protects against:
 
-- Authentication (JWT / OAuth2)
-- Rate limiting
-- Request validation
+| Threat | Mitigation |
+|--------|------------|
+| Plugin DLL tampering | SHA-256 hash verification |
+| Manifest forgery | RSA/ECDSA signature verification |
+| Privilege escalation | Capability enforcement (deny-by-default) |
+| Code injection | Validation pipeline, assembly isolation |
+| Data exfiltration | NetworkCapability (controlled outbound) |
+| Resource abuse | Timeout, memory monitoring, cancellation |
+| Replay attacks | Revocation list, manifest expiration |
 
----
-
-## Layer 2 - Manifest Validation Layer
-
-### Mandatory checks:
-
-- Schema validation
-- SHA-256 hash verification
-- Digital signature verification
-- Version compatibility check
-- Revocation list check
-
-👉 Fail = reject immediately
+For full threat analysis, see `docs/security/threat-model.md`.
 
 ---
 
-## Layer 3 - Capability Enforcement Layer
+# 5. CAPABILITY SECURITY MODEL
 
-Plugin không bao giờ truy cập trực tiếp:
-
-❌ Database  
-❌ File system  
-❌ Network  
-❌ OS resources  
-
-👉 All access MUST go through:
-
-- IDatabaseCapability
-- INetworkCapability
-- IStorageCapability
-
----
-
-## Layer 4 - Runtime Isolation Layer
-
-- AssemblyLoadContext isolation
-- Optional process-level isolation (recommended)
-- No shared static state
-
----
-
-## Layer 5 - Execution Control Layer
-
-- Timeout enforcement
-- CancellationToken
-- Resource monitoring (CPU / memory soft limits)
-
----
-
-## Layer 6 - Observability & Audit Layer
-
-- Full execution trace logging
-- Immutable audit logs
-- Security event tracking
-
----
-
-# 5. 📄 MANIFEST SECURITY CONTRACT
-
-Manifest là trung tâm của security model.
-
-## MUST contain:
-
-- Plugin identity
-- SHA-256 hash
-- Digital signature
-- Permissions (capabilities)
-- Resource limits
-- Version constraints
-
----
-
-## RULE:
-
-> Nếu manifest không hợp lệ → plugin không tồn tại
-
----
-
-# 6. 🔑 CAPABILITY SECURITY MODEL
-
-## Principle:
-
-Plugin KHÔNG được quyền tự truy cập tài nguyên.
-
-## Instead:
+Plugin CANNOT access resources directly. Instead:
 
 ```
-Plugin → Capability Proxy → Core Engine → Infrastructure
+Plugin → Capability Interface → Core Proxy → Infrastructure
 ```
 
----
-
-## Rules:
-
-- Capability must be explicitly granted
-- No implicit permission
+Rules:
+- Capability must be explicitly granted in manifest
+- No implicit permission ever
 - No runtime permission escalation
+- Deny by default
+
+For full design, see `docs/security/capability-system.md`.
 
 ---
 
-## Example:
+# 6. ISOLATION STRATEGY
 
-❌ Wrong:
-```csharp
-DbConnection.Open()
-```
+| Level | Mechanism | Security Level |
+|-------|-----------|---------------|
+| L1 | AssemblyLoadContext | Low (Phase 1 default) |
+| L2 | Process Isolation | Medium (Production recommended) |
+| L3 | Container Sandbox | High |
 
-✅ Correct:
-```csharp
-context.Capabilities.Database.QueryAsync()
-```
+Important: AssemblyLoadContext is NOT a security boundary. It provides code isolation, not sandboxing.
 
----
-
-# 7. 🧱 ISOLATION STRATEGY
-
-## Level 1 (Default)
-- AssemblyLoadContext isolation
-
-## Level 2 (Recommended)
-- Process isolation per plugin
-
-## Level 3 (High security)
-- Container sandbox (Docker/Kubernetes)
+For details, see `docs/plugin/plugin-isolation.md`.
 
 ---
 
-## Important Note:
+# 7. RESOURCE PROTECTION
 
-> AssemblyLoadContext is NOT a security boundary
+Each execution enforces:
+- Execution timeout (mandatory, via CancellationToken)
+- Memory usage limit (soft monitoring)
+- CPU throttling (cooperative cancellation)
 
----
+Violations → immediate termination.
 
-# 8. ⏱ RESOURCE PROTECTION
-
-## Enforced limits:
-
-- Execution timeout (mandatory)
-- Memory usage limit (soft enforcement)
-- CPU throttling (optional monitoring)
+For details, see `docs/runtime/resource-governance.md`.
 
 ---
 
-## Behavior:
+# 8. REPLAY & TAMPERING PROTECTION
 
-- Timeout → terminate execution
-- Excess memory → kill plugin
-- Infinite loop → cancellation token
-
----
-
-# 9. 🔁 REPLAY & TAMPERING PROTECTION
-
-## Protection mechanisms:
-
-- SHA-256 hash verification
-- Signature verification (RSA/ECDSA)
-- Revocation list check
-- Version binding
+Mechanisms:
+- SHA-256 hash verification (binary integrity)
+- RSA/ECDSA signature (manifest authenticity)
+- Revocation list check (revoked plugins blocked)
+- Manifest expiration (time-bounded trust)
+- Version binding (prevent old version replay)
 
 ---
 
-## Prevents:
+# 9. FAIL-SECURE DESIGN
 
-- Modified DLL execution
-- Replay old plugin versions
-- Fake manifest injection
+> System MUST fail closed under ALL error conditions.
 
----
-
-# 10. 🧯 FAIL-SECURE DESIGN
-
-## Rule:
-
-> System MUST fail closed under all error conditions
+- Validation fails → reject execution
+- Signature invalid → stop immediately
+- Capability missing → deny access
+- Timeout exceeded → terminate execution
+- Unknown error → reject (never fallback to unsafe mode)
 
 ---
 
-## Meaning:
+# 10. CRYPTOGRAPHY MODEL
 
-- If validation fails → reject execution
-- If signature invalid → stop immediately
-- If capability missing → deny access
+| Purpose | Algorithm |
+|---------|-----------|
+| Integrity | SHA-256 |
+| Signing | RSA-SHA256 (default), ECDSA-SHA256 (optional) |
+| Key storage | KMS / HSM (keys never in application code) |
 
 ---
 
-# 11. 📊 SECURITY MONITORING
+# 11. SECURITY MONITORING
 
 Every execution logs:
-
-- TraceId
-- PluginId
-- UserId (if applicable)
-- Action type
-- Execution time
+- TraceId, PluginId, UserId
+- Action type, execution time
 - Failure reason (if any)
 
----
+Security events (signature failure, capability violation, timeout abuse) trigger:
+- Immutable audit log entry
+- Real-time alert
 
-## Security Events:
-
-- Invalid signature attempt
-- Capability violation
-- Timeout abuse
-- Suspicious execution pattern
+For alerting rules, see `docs/infrastructure/observability.md`.
 
 ---
 
-# 12. 🔥 ATTACK MITIGATION STRATEGIES
+# 12. HARD GUARANTEES
 
-## 12.1 Code Tampering
-- Hash verification
-- Signature enforcement
-
-## 12.2 Privilege Escalation
-- Strict capability mapping
-- No dynamic permission upgrade
-
-## 12.3 Memory Attacks
-- Context isolation
-- Cleanup sensitive buffers
-
-## 12.4 Network Abuse
-- Capability-based network access only
-- No raw socket access
-
-## 12.5 Runtime Abuse
-- Timeout enforcement
-- Cancellation tokens
-- Execution watchdog
-
----
-
-# 13. ⚙️ CRYPTOGRAPHY MODEL
-
-- SHA-256 for integrity
-- RSA / ECDSA for signing
-- KMS / HSM for key storage
-
----
-
-# 14. 🚨 SECURITY RULES (HARD GUARANTEE)
-
-## ALWAYS:
-
+**ALWAYS:**
 - Verify signature before execution
 - Verify hash before loading
 - Enforce capability restrictions
 - Log all security events
 - Fail closed on error
 
----
-
-## NEVER:
-
+**NEVER:**
 - Trust plugin input
 - Allow direct infrastructure access
 - Skip validation steps
@@ -344,15 +169,13 @@ Every execution logs:
 
 ---
 
-# 15. 🎯 FINAL SECURITY GOAL
+# 13. FINAL SECURITY GOAL
 
-👉 Ensure:
-
-- Plugins are fully untrusted
-- Core remains immutable trust boundary
-- All execution is governed by metadata
-- No bypass path exists in runtime
+> Plugins are fully untrusted.
+> Core remains the immutable trust boundary.
+> All execution is governed by metadata.
+> No bypass path exists in runtime.
 
 ---
 
-# 🏁 END OF SECURITY MODEL
+# 🏁 END

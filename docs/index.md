@@ -3,230 +3,158 @@
 
 > **Single Source of Documentation Navigation**
 >
-> This document provides a structured overview of all technical documentation.
->
 > Read this file before exploring individual documents.
 
 ---
 
-# 📖 Documentation Philosophy
+# Documentation Philosophy
 
-The documentation follows an **Architecture-First** approach.
-
-Rules:
-
-- Every topic has exactly one authoritative document.
-- Documents should not duplicate information.
-- Cross-reference related documents instead of copying content.
-- Architectural decisions are recorded in ADRs.
-- Implementation must conform to documented specifications.
+- Every topic has exactly one authoritative document (no duplication)
+- Documents cross-reference related content instead of copying
+- Architectural decisions are recorded in ADRs
+- Implementation must conform to documented specifications
+- All documents written in English for consistency
 
 ---
 
-# 🗂 Documentation Structure
+# Documentation Structure
 
 ```
 docs/
+├── index.md                          ← You are here
 │
-├── INDEX.md
+├── architecture/
+│   ├── architecture.md               → System overview + design principles
+│   ├── execution-flow.md             → Full execution pipeline (authoritative)
+│   ├── runtime-engine-spec.md        → Core components + interfaces
+│   ├── runtime-api-spec.md           → HTTP API surface (all endpoints)
+│   ├── system-context.md             → External boundaries + trust zones
+│   ├── verification-engine-spec.md   → Automated plugin verification pipeline
+│   ├── permission-review-spec.md     → Permission display + approval flow
+│   ├── extension-ecosystem.md        → Ecosystem model (repos, registry, workflow)
+│   ├── inter-extension-spec.md       → Cross-extension invocation + visibility
+│   └── declarative-extension-spec.md → JSON-driven extensions (no code)
 │
-├── Architecture
-│   ├── architecture.md
-│   ├── runtime-engine-spec.md
-│   └── runtime-api-spec.md
+├── security/
+│   ├── security-model.md             → Zero Trust model + hard guarantees
+│   ├── security-enforcement-spec.md  → Validation pipeline implementation
+│   ├── capability-system.md          → Capability architecture + rules
+│   └── threat-model.md               → Threats, risks, mitigations
 │
-├── Security
-│   ├── security-model.md
-│   ├── threat-model.md
-│   ├── security-enforcement-spec.md
-│   └── capability-system.md
+├── plugin/
+│   ├── plugin-lifecycle.md           → Upload → Approve → Sign → Execute → Revoke
+│   ├── plugin-loading.md             → Assembly loading mechanics
+│   ├── plugin-isolation.md           → Isolation levels (L1-L4)
+│   ├── plugin-sdk-spec.md            → IPlugin interface + SDK
+│   ├── manifest-spec.md              → Signed manifest schema
+│   └── versioning-strategy.md        → SemVer, compatibility, migration
 │
-├── Plugin
-│   ├── plugin-lifecycle.md
-│   ├── plugin-sdk-spec.md
-│   ├── manifest-spec.md
-│   └── versioning-strategy.md
+├── runtime/
+│   ├── execution-model.md            → Execution modes, lifecycle states
+│   ├── plugin-execution-context.md   → Context interface + usage
+│   ├── resource-governance.md        → Timeout, memory, CPU enforcement
+│   └── scheduler.md                  → Queue model, concurrency control
 │
-├── Infrastructure
-│   ├── deployment-model.md
-│   ├── observability.md
-│   └── non-functional-requirements.md
+├── data/
+│   ├── data-model.md                 → Logical entities + relationships
+│   ├── database-schema.md            → Physical PostgreSQL schema (DDL)
+│   └── event-model.md                → Domain events + C# definitions
 │
-├── Data
-│   └── data-model.md
+├── infrastructure/
+│   ├── deployment-model.md           → Topology, containers, K8s
+│   ├── observability.md              → Logs, metrics, traces, alerting
+│   ├── scaling-model.md              → Horizontal scaling strategy
+│   ├── disaster-recovery.md          → RTO, RPO, backup, failover
+│   └── non-functional-requirements.md → Performance, availability, capacity
 │
-└── adr/
+├── implementation/
+│   ├── index.md                      → Implementation docs reading order
+│   ├── solution-structure.md         → .NET solution layout + namespaces
+│   ├── dependency-manifest.md        → NuGet packages
+│   ├── capability-interfaces.md      → Full C# interface definitions
+│   ├── error-handling.md             → Error codes + exception hierarchy
+│   ├── configuration-model.md        → appsettings + options pattern
+│   ├── authentication-flow.md        → JWT setup + endpoint auth
+│   ├── database-migrations.md        → Migration commands + strategy
+│   ├── testing-strategy.md           → Test pyramid + frameworks
+│   ├── cicd-pipeline.md              → Build/test/deploy pipeline
+│   └── plugin-packaging.md           → Plugin ZIP format + upload
+│
+├── requirements/
+│   ├── readme.md
+│   ├── traceability-matrix.md        → FR → Architecture → Implementation mapping
+│   ├── functional/                   → FR-100 through FR-900
+│   └── business-rules/              → BR-200 through BR-400
+│
+├── standards/
+│   ├── extension-development-standard.md → Rules for plugin developers
+│   └── sdk-development-standard.md       → Rules for platform SDK team
+│
+├── adr/
+│   ├── ADR-0001-zero-trust-runtime.md
+│   ├── ADR-0002-capability-system.md
+│   ├── ADR-0003-signed-manifest.md
+│   └── ADR-0004-stateless-runtime.md
+│
+└── diagrams/                         → Visual diagrams (Mermaid/text)
 ```
 
 ---
 
-# 📑 Reading Order
+# Single Source of Truth
 
-## 1. Foundation
-
-| Document | Purpose |
-|----------|---------|
-| architecture.md | Overall system architecture |
-| runtime-engine-spec.md | Core Runtime architecture |
-| runtime-api-spec.md | Runtime API contracts |
-
----
-
-## 2. Security
-
-| Document | Purpose |
-|----------|---------|
-| security-model.md | Zero Trust architecture |
-| threat-model.md | Threat analysis |
-| security-enforcement-spec.md | Runtime enforcement |
-| capability-system.md | Capability-based authorization |
-
----
-
-## 3. Plugin Platform
-
-| Document | Purpose |
-|----------|---------|
-| plugin-lifecycle.md | Plugin lifecycle |
-| plugin-sdk-spec.md | SDK design |
-| manifest-spec.md | Signed Manifest specification |
-| versioning-strategy.md | Compatibility and versioning |
-
----
-
-## 4. Infrastructure
-
-| Document | Purpose |
-|----------|---------|
-| deployment-model.md | Deployment topology |
-| observability.md | Logging, metrics, tracing |
-| non-functional-requirements.md | Production quality requirements |
-
----
-
-## 5. Data
-
-| Document | Purpose |
-|----------|---------|
-| data-model.md | Domain entities and persistence model |
-
----
-
-## 6. Architecture Decisions
-
-Location:
-
-```
-docs/adr/
-```
-
-Purpose:
-
-Document major architectural decisions.
-
-Examples:
-
-- Zero Trust Runtime
-- Capability-Based Security
-- Stateless Runtime
-- Signed Manifest
-
----
-
-# 🏗 Dependency Graph
-
-```
-README
-      │
-      ▼
-architecture.md
-      │
-      ├──────── runtime-engine-spec.md
-      ├──────── runtime-api-spec.md
-      │
-      ├──────── security-model.md
-      │             │
-      │             ├──────── threat-model.md
-      │             └──────── security-enforcement-spec.md
-      │
-      ├──────── plugin-lifecycle.md
-      │             │
-      │             ├──────── plugin-sdk-spec.md
-      │             ├──────── manifest-spec.md
-      │             └──────── versioning-strategy.md
-      │
-      ├──────── deployment-model.md
-      │             │
-      │             ├──────── observability.md
-      │             └──────── non-functional-requirements.md
-      │
-      └──────── data-model.md
-```
-
----
-
-# 📌 Single Source of Truth
-
-| Topic | Document |
-|--------|----------|
-| Architecture | architecture.md |
-| Runtime | runtime-engine-spec.md |
-| Runtime API | runtime-api-spec.md |
-| Security | security-model.md |
-| Threats | threat-model.md |
-| Capability System | capability-system.md |
-| Plugin Lifecycle | plugin-lifecycle.md |
-| Plugin SDK | plugin-sdk-spec.md |
-| Manifest | manifest-spec.md |
-| Versioning | versioning-strategy.md |
-| Deployment | deployment-model.md |
-| Observability | observability.md |
-| Non-Functional Requirements | non-functional-requirements.md |
-| Data Model | data-model.md |
-| Architecture Decisions | docs/adr/ |
+| Topic | Authoritative Document |
+|-------|----------------------|
+| Architecture overview | `architecture/architecture.md` |
+| Execution pipeline | `architecture/execution-flow.md` |
+| Runtime components | `architecture/runtime-engine-spec.md` |
+| API endpoints | `architecture/runtime-api-spec.md` |
+| Security model | `security/security-model.md` |
+| Validation pipeline | `security/security-enforcement-spec.md` |
+| Capability system | `security/capability-system.md` |
+| Threats | `security/threat-model.md` |
+| Plugin lifecycle | `plugin/plugin-lifecycle.md` |
+| Manifest schema | `plugin/manifest-spec.md` |
+| Isolation levels | `plugin/plugin-isolation.md` |
+| Execution model | `runtime/execution-model.md` |
+| Resource governance | `runtime/resource-governance.md` |
+| Database schema | `data/database-schema.md` |
+| Events | `data/event-model.md` |
+| Deployment | `infrastructure/deployment-model.md` |
+| Observability | `infrastructure/observability.md` |
+| Error codes | `implementation/error-handling.md` |
+| Capability interfaces | `implementation/capability-interfaces.md` |
+| Solution structure | `implementation/solution-structure.md` |
+| Extension standards | `standards/extension-development-standard.md` |
+| SDK standards | `standards/sdk-development-standard.md` |
+| Verification engine | `architecture/verification-engine-spec.md` |
+| Permission review | `architecture/permission-review-spec.md` |
+| Extension ecosystem | `architecture/extension-ecosystem.md` |
+| Inter-extension communication | `architecture/inter-extension-spec.md` |
+| Declarative extensions | `architecture/declarative-extension-spec.md` |
 
 No document should redefine information owned by another document.
 
 ---
 
-# 🔗 Cross-Reference Rules
+# Reading Order
 
-Each document should:
-
-- Reference related documents instead of duplicating content.
-- Use consistent terminology.
-- Follow the naming conventions defined in the project.
-- Remain implementation-agnostic unless explicitly specified.
-
----
-
-# 📈 Documentation Status
-
-| Area | Status |
-|------|--------|
-| Architecture | ✅ Complete |
-| Runtime | ✅ Complete |
-| Security | ✅ Complete |
-| Plugin Platform | ✅ Complete |
-| Infrastructure | ✅ Complete |
-| Data Model | ✅ Complete |
-| ADR | ✅ Complete |
-
-Overall documentation coverage: **Production Ready**.
+1. **Architecture** — `architecture.md` → `execution-flow.md` → `runtime-engine-spec.md`
+2. **Security** — `security-model.md` → `security-enforcement-spec.md` → `capability-system.md`
+3. **Plugin** — `plugin-lifecycle.md` → `manifest-spec.md` → `plugin-isolation.md`
+4. **Runtime** — `execution-model.md` → `plugin-execution-context.md` → `resource-governance.md`
+5. **Data** — `data-model.md` → `database-schema.md` → `event-model.md`
+6. **Implementation** — `solution-structure.md` → `dependency-manifest.md` → start coding
 
 ---
 
-# 📝 Maintenance Rules
+# Cross-Reference Rules
 
-When introducing a new feature:
-
-1. Update the relevant specification document.
-2. Add or update an ADR if the architecture changes.
-3. Update this index if a new document is added.
-4. Avoid duplicate documentation.
-
-Documentation must evolve alongside the implementation.
+- Reference related documents instead of duplicating content
+- Use consistent terminology across all documents
+- Remain implementation-agnostic in architecture docs
+- Implementation docs provide concrete code/config details
 
 ---
 
-# 🏁 End of Documentation Index
+# 🏁 END
