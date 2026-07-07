@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0-preview.5.25277.114" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.16.0-beta.1" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\PluginRuntime.Runtime\PluginRuntime.Runtime.csproj" />
+    <ProjectReference Include="..\..\Core\PluginRuntime.Security\PluginRuntime.Security.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\PluginRuntime.Infrastructure\PluginRuntime.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\PluginRuntime.Infrastructure.KeyVault\PluginRuntime.Infrastructure.KeyVault.csproj" />
+    <ProjectReference Include="..\..\Capabilities\PluginRuntime.Capabilities.Database\PluginRuntime.Capabilities.Database.csproj" />
+    <ProjectReference Include="..\..\Capabilities\PluginRuntime.Capabilities.Network\PluginRuntime.Capabilities.Network.csproj" />
+    <ProjectReference Include="..\..\Capabilities\PluginRuntime.Capabilities.Storage\PluginRuntime.Capabilities.Storage.csproj" />
+    <ProjectReference Include="..\..\Capabilities\PluginRuntime.Capabilities.Cache\PluginRuntime.Capabilities.Cache.csproj" />
+    <ProjectReference Include="..\..\Capabilities\PluginRuntime.Capabilities.Extension\PluginRuntime.Capabilities.Extension.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -6,27 +6,27 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
 
 ## Tasks
 
-- [ ] 1. Foundation - Solution Structure & Core Domain
-  - [ ] 1.1 Create .NET solution file and all 14 source projects with correct dependency references
+- [x] 1. Foundation - Solution Structure & Core Domain
+  - [x] 1.1 Create .NET solution file and all 14 source projects with correct dependency references
     - Create `PluginRuntime.sln` in `src/` directory
     - Create projects: Core, Runtime, Security, Infrastructure, Infrastructure.KeyVault, Api, Admin, Capabilities.Abstractions, Capabilities.Database, Capabilities.Network, Capabilities.Storage, Capabilities.Cache, Capabilities.Extension, Sdk
     - Configure dependency flow: SDK (zero deps) → Core (zero external NuGet) → Capabilities.Abstractions → Security/Runtime → Infrastructure → Api
     - All projects target `net10.0` with `TreatWarningsAsErrors` enabled
     - _Requirements: 1.1, 1.5_
 
-  - [ ] 1.2 Create all 7 test projects with references to their corresponding source projects
+  - [x] 1.2 Create all 7 test projects with references to their corresponding source projects
     - Create: Core.Tests, Runtime.Tests, Security.Tests, Api.Tests, Infrastructure.Tests, IntegrationTests, Admin.Tests
     - Reference xUnit, FluentAssertions, NSubstitute, FsCheck (for PBT)
     - _Requirements: 1.7_
 
-  - [ ] 1.3 Implement Core domain entities, value objects, and enums
+  - [x] 1.3 Implement Core domain entities, value objects, and enums
     - Create `Plugin`, `PluginVersion`, `Manifest`, `Execution` entities in `PluginRuntime.Core.Entities`
     - Create `ResourceLimits`, `ValidationResult`, `ValidationError`, `VerificationResult` in `PluginRuntime.Core.ValueObjects`
     - Create all enums (`PluginStatus`, `PluginVersionStatus`, `ExecutionStatus`, `ActorType`, `AuditResult`, `Visibility`, `ApprovalDecision`, `RiskLevel`, `SignatureAlgorithm`, `SubscriptionStatus`) in `PluginRuntime.Core.Enums`
     - Implement validation logic on entity construction (reject null/empty required fields)
     - _Requirements: 1.2_
 
-  - [ ] 1.4 Define Core interfaces
+  - [x] 1.4 Define Core interfaces
     - Create `IPluginExecutor`, `IManifestValidator`, `ISignatureVerifier`, `IHashVerifier`, `IPluginLoader`, `IExecutionPipeline`, `ICapabilityResolver`, `IExecutionGovernor`, `IRevocationChecker` in `PluginRuntime.Core.Interfaces`
     - Create `IRateLimiter` with `CheckAsync(key, maxRequests, window, CancellationToken)` returning `RateLimitResult(IsAllowed, Remaining, RetryAfter)` — abstraction for distributed rate limiting
     - Create `IPluginEventBus` with `PublishAsync(PluginEvent, CancellationToken)` and `SubscribeAsync(eventType, handler, CancellationToken)` — abstraction for cross-instance coordination
@@ -34,14 +34,14 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Ensure all async methods accept `CancellationToken`
     - _Requirements: 1.2_
 
-  - [ ] 1.5 Implement PluginRuntime.Sdk public types
+  - [x] 1.5 Implement PluginRuntime.Sdk public types
     - Create `IPlugin` interface with `ExecuteAsync(PluginContext, CancellationToken)` method
     - Create `PluginContext` record with ExecutionId, PluginId, Version, Input, Capabilities, CorrelationId
     - Create `PluginResult` record with Success, Data, ErrorCode, ErrorMessage
     - Verify zero project references and zero external NuGet dependencies
     - _Requirements: 1.3_
 
-  - [ ] 1.6 Implement Capabilities.Abstractions interfaces and record types
+  - [x] 1.6 Implement Capabilities.Abstractions interfaces and record types
     - Create `ICapability` base interface with `Name` and `Version` properties
     - Create `IDatabaseCapability`, `INetworkCapability`, `IStorageCapability`, `ICacheCapability`, `IExtensionCapability` with method signatures per docs/implementation/capability-interfaces.md
     - Create associated records: `NetworkRequest`, `NetworkResponse`, `StorageMetadata`, `ExtensionInvocationResult`
@@ -54,7 +54,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test enum value coverage
     - _Requirements: 1.6_
 
-  - [ ] 1.8 Verify solution builds with zero warnings
+  - [x] 1.8 Verify solution builds with zero warnings
     - Run `dotnet build` on entire solution
     - Confirm all projects compile successfully targeting net10.0
     - Confirm TreatWarningsAsErrors produces zero warnings
@@ -64,7 +64,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 3. Security Engine - Manifest Validation & Cryptographic Verification
-  - [ ] 3.1 Implement ManifestValidator
+  - [x] 3.1 Implement ManifestValidator
     - Validate schema compliance: all required fields present and valid types
     - Validate required fields: plugin_id, version, permissions, capabilities, signature, public_key_id, issued_at, expires_at
     - Validate version compatibility with target_core_version
@@ -72,34 +72,34 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Return structured `ValidationResult` with specific `ValidationError` per failure
     - _Requirements: 2.1_
 
-  - [ ] 3.2 Implement HashVerifier
+  - [x] 3.2 Implement HashVerifier
     - Compute SHA-256 of DLL bytes using `System.Security.Cryptography.SHA256`
     - Compare computed hash against manifest's sha256 field
     - Return `VerificationResult` with error code on mismatch
     - _Requirements: 2.2_
 
-  - [ ] 3.3 Implement SignatureVerifier with pluggable IKeyProvider
+  - [x] 3.3 Implement SignatureVerifier with pluggable IKeyProvider
     - Support RSA-SHA256 (default) and ECDSA-SHA256 algorithms
     - Load public key by `public_key_id` from `IKeyProvider` interface
     - Verify digital signature over canonical manifest content
     - Return `VerificationResult` with specific error code if signature invalid or key not found
     - _Requirements: 2.3_
 
-  - [ ] 3.4 Implement IKeyProvider abstraction for HSM/KMS integration
+  - [x] 3.4 Implement IKeyProvider abstraction for HSM/KMS integration
     - Define `IKeyProvider` interface in Core with `GetPublicKeyAsync(keyId, CancellationToken)` and `ListKeyIdsAsync(CancellationToken)`
     - Implement `InMemoryKeyProvider` for testing (loads keys from configuration)
     - Implement `KmsKeyProvider` in Infrastructure.KeyVault (delegates to external KMS/HSM)
     - Register via DI: tests use InMemory, production uses KMS (swap via config)
     - _Requirements: 2.3, 10.5_
 
-  - [ ] 3.4 Implement RevocationChecker with Redis cache
+  - [x] 3.4 Implement RevocationChecker with Redis cache
     - Query Redis cache first for revocation status
     - Fall back to database query if cache miss
     - Expired revocations (expires_at < now) do NOT block execution
     - Cache revocation results with configurable TTL
     - _Requirements: 2.4_
 
-  - [ ] 3.5 Implement security audit logging on validation failure
+  - [x] 3.5 Implement security audit logging on validation failure
     - On any validation failure: fail closed, stop immediately
     - Log immutable audit_logs entry with TraceId, PluginId, failure reason, actor, timestamp
     - Return structured error response with category "Security"
@@ -135,14 +135,14 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Runtime Engine - Execution Pipeline & Plugin Loader
-  - [ ] 5.1 Implement ExecutionPipeline with 7 sequential stages
+  - [x] 5.1 Implement ExecutionPipeline with 7 sequential stages
     - Process stages in fixed order: ManifestValidator → SignatureVerifier → HashVerifier → CapabilityResolver → PluginLoader → PluginExecutor → ObservabilityCollector
     - On any stage failure: short-circuit immediately (fail closed)
     - Return structured error with failing stage name, error code, and TraceId
     - Subsequent stages SHALL NOT execute after failure
     - _Requirements: 3.1, 3.2_
 
-  - [ ] 5.2 Implement PluginLoader with AssemblyLoadContext isolation
+  - [x] 5.2 Implement PluginLoader with AssemblyLoadContext isolation
     - Create collectible `AssemblyLoadContext` per plugin
     - Resolve entry point class implementing `IPlugin` from SDK
     - Return plugin instance; no shared mutable state between loaded plugins
@@ -150,7 +150,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Track loaded ALCs for unload/hot-reload
     - _Requirements: 3.3, 3.4_
 
-  - [ ] 5.3 Implement ExecutionGovernor for resource limit enforcement
+  - [x] 5.3 Implement ExecutionGovernor for resource limit enforcement
     - Enforce execution timeout via `CancellationTokenSource` with `ResourceLimits.TimeoutMs`; CancellationToken serves as the cooperative enforcement mechanism that plugins must observe
     - Cancel the CancellationToken when timeout expires
     - Monitor memory usage against `ResourceLimits.MaxMemoryMb`; cancel CancellationToken when exceeded
@@ -159,7 +159,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Terminate within 1 second of memory limit detection
     - _Requirements: 3.5, 3.6, 3.7_
 
-  - [ ] 5.4 Implement HotReloadManager for version transitions
+  - [x] 5.4 Implement HotReloadManager for version transitions
     - Publish reload event via `IPluginEventBus` so all instances coordinate
     - Subscribe to reload events from other instances via `IPluginEventBus`
     - Stop new requests to old version
@@ -199,7 +199,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Capability Layer - Infrastructure Access Control
-  - [ ] 7.1 Implement CapabilityResolver
+  - [x] 7.1 Implement CapabilityResolver
     - Return ONLY capabilities explicitly granted in manifest
     - Return dictionary keyed by capability name
     - Deny-by-default: undeclared capability → deny immediately
@@ -207,14 +207,14 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Return error with category "Security" on denial
     - _Requirements: 4.5, 4.6_
 
-  - [ ] 7.2 Implement DatabaseCapability
+  - [x] 7.2 Implement DatabaseCapability
     - Reject non-parameterized SQL (detect string interpolation markers)
     - Scope data access to plugin's isolated schema (prefix table references with plugin namespace)
     - Handle connection management via connection pooling transparently
     - Propagate CancellationToken through entire call chain
     - _Requirements: 4.1, 4.7_
 
-  - [ ] 7.3 Implement NetworkCapability
+  - [x] 7.3 Implement NetworkCapability
     - Proxy HTTP calls only to domains in manifest's `allowed_domains`
     - Enforce 10 MB maximum response size per request
     - Enforce timeout from `NetworkRequest.TimeoutMs`
@@ -222,7 +222,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Propagate CancellationToken
     - _Requirements: 4.2, 4.7_
 
-  - [ ] 7.4 Implement StorageCapability
+  - [x] 7.4 Implement StorageCapability
     - Scope all storage keys to `{pluginId}/{key}` namespace
     - Enforce 50 MB per-object maximum size
     - Enforce configurable per-plugin total storage quota
@@ -230,7 +230,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Propagate CancellationToken
     - _Requirements: 4.3, 4.7_
 
-  - [ ] 7.5 Implement CacheCapability
+  - [x] 7.5 Implement CacheCapability
     - Namespace all cache keys as `{pluginId}:{key}`
     - Enforce configurable maximum key count per plugin (default: 10000)
     - Enforce 1 MB maximum value size after serialization
@@ -254,7 +254,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. API Layer - HTTP Gateway & Controllers
-  - [ ] 9.1 Configure API startup with middleware pipeline
+  - [x] 9.1 Configure API startup with middleware pipeline
     - Configure JWT authentication middleware (Bearer token validation)
     - Configure rate limiting middleware delegating to `IRateLimiter` (per-endpoint, configurable)
     - Configure error handling middleware (standardized error format)
@@ -263,12 +263,12 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - URI-based versioning under `/api/v1` prefix
     - _Requirements: 5.1, 5.3, 5.5, 5.6_
 
-  - [ ] 9.2 Implement ExecuteController
+  - [x] 9.2 Implement ExecuteController
     - `POST /api/v1/execute/{pluginId}` — accept JSON body with `input` (required), optional `version`, optional `metadata.correlationId`
     - Delegate to `IExecutionPipeline` and return HTTP 200 with `ExecutionResult` (success, data, executionId, traceId, durationMs)
     - _Requirements: 5.2_
 
-  - [ ] 9.3 Implement PluginsController
+  - [x] 9.3 Implement PluginsController
     - `GET /api/v1/plugins` — list plugins
     - `GET /api/v1/plugins/{pluginId}` — get plugin details
     - `POST /api/v1/plugins/upload` — multipart/form-data, max 50 MB ZIP, return 202 with pluginVersionId and status "Scanning"
@@ -277,7 +277,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Reject files exceeding 50 MB or invalid ZIP with 400
     - _Requirements: 5.8_
 
-  - [ ] 9.4 Implement ApprovalsController and ExtensionsController
+  - [x] 9.4 Implement ApprovalsController and ExtensionsController
     - `GET /api/v1/approvals?status=Pending` — list pending approvals
     - `POST /api/v1/approvals/{versionId}/approve` — approve plugin version
     - `POST /api/v1/approvals/{versionId}/reject` — reject plugin version
@@ -288,12 +288,12 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - `POST /api/v1/extensions/{extensionId}/subscriptions/{id}/revoke` — revoke subscription
     - _Requirements: 5.2, 8.4_
 
-  - [ ] 9.5 Implement health and readiness endpoints
+  - [x] 9.5 Implement health and readiness endpoints
     - `GET /health` — return 200 with "Healthy" when DB, Redis, storage all reachable; 503 with "Unhealthy" identifying failing dependency
     - `GET /ready` — return 200 only when all checks pass and runtime initialized
     - _Requirements: 5.7_
 
-  - [ ] 9.6 Implement standardized error response format
+  - [x] 9.6 Implement standardized error response format
     - Error format: `{ error: { code, category, message, traceId, timestamp } }`
     - HTTP status mapping: Validation → 400, Security → 403, NotFound → 404, Execution → 500, Timeout → 504, ResourceLimit → 429
     - Rate limit exceeded → 429 with `Retry-After` header
@@ -311,7 +311,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Infrastructure - Persistence & External Services
-  - [ ] 11.1 Implement PluginRuntimeDbContext with all 13 tables
+  - [x] 11.1 Implement PluginRuntimeDbContext with all 13 tables
     - Configure all 13 DbSets mapping to docs/data/database-schema.md
     - Configure `HasColumnType("jsonb")` for all JSONB columns (permissions, capabilities, metadata, risk_summary, permission_diff, conditions, invocation_policy, config, input_schema, output_schema, expected_usage)
     - Configure `ValueConverter` for all enum-to-string columns (status, decision, visibility, actor_type, result, overall_risk_level, signature_algorithm)
@@ -326,32 +326,32 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Include all foreign key relationships
     - _Requirements: 6.2_
 
-  - [ ] 11.3 Implement repository interfaces in Core and implementations in Infrastructure
+  - [x] 11.3 Implement repository interfaces in Core and implementations in Infrastructure
     - Define one repository interface per entity in `PluginRuntime.Core.Interfaces` (13 total: IPluginRepository, IPluginVersionRepository, IManifestRepository, ICapabilityRepository, IExecutionRepository, IAuditLogRepository, IRevocationRepository, IApprovalRepository, IRuntimeNodeRepository, IExtensionRegistryRepository, IExtensionSubscriptionRepository, IPermissionReviewRepository, IDeclarativeConfigRepository)
     - Implement each repository in `PluginRuntime.Infrastructure`
     - IAuditLogRepository: insert-only (no Update/Delete methods)
     - _Requirements: 6.6_
 
-  - [ ] 11.4 Implement RedisCacheService
+  - [x] 11.4 Implement RedisCacheService
     - Configurable TTL defaulting to 300 seconds (range 10-86400 seconds)
     - Cache revocation lists, plugin metadata, and capability resolution results
     - Implement `ICacheService` interface defined in Core
     - _Requirements: 6.4_
 
-  - [ ] 11.5 Implement ObjectStorageService
+  - [x] 11.5 Implement ObjectStorageService
     - Store plugin ZIP/DLL at `{plugin_id}/{version_id}/` path prefix
     - Enforce 50 MB maximum file size per object
     - Restrict write access to application service identity only
     - _Requirements: 6.5_
 
-  - [ ] 11.6 Implement infrastructure failure handling
+  - [x] 11.6 Implement infrastructure failure handling
     - If PostgreSQL, Redis, or object storage is unreachable: fail closed
     - Log connectivity failure with service name and error details
     - Return structured error indicating infrastructure unavailability
     - Connection timeout: 5 seconds
     - _Requirements: 6.7_
 
-  - [ ] 11.7 Implement scalability abstractions (IRateLimiter and IPluginEventBus)
+  - [x] 11.7 Implement scalability abstractions (IRateLimiter and IPluginEventBus)
     - Implement `InMemoryRateLimiter` using `ConcurrentDictionary<string, SlidingWindowCounter>` — default for single-instance/testing
     - Implement `RedisRateLimiter` using Redis INCR + EXPIRE for sliding window — for multi-instance deployment
     - Implement `InMemoryEventBus` using `Channel<PluginEvent>` for in-process pub/sub — default for single-instance/testing
@@ -374,31 +374,31 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 13. Observability - Telemetry & Monitoring
-  - [ ] 13.1 Configure OpenTelemetry tracing for execution pipeline
+  - [x] 13.1 Configure OpenTelemetry tracing for execution pipeline
     - Emit trace per plugin execution with spans for each pipeline stage (ManifestValidator, SignatureVerifier, HashVerifier, CapabilityResolver, PluginLoader, PluginExecutor)
     - Each span records: TraceId, SpanId, ExecutionId, PluginId, Version, StartTime, EndTime, Duration, Status, MemoryUsageMb
     - Telemetry overhead SHALL NOT exceed 5ms per execution
     - _Requirements: 7.1, 7.7_
 
-  - [ ] 13.2 Implement structured JSON logging
+  - [x] 13.2 Implement structured JSON logging
     - Configure structured JSON output with fields: timestamp (ISO 8601), level, traceId, executionId, pluginId, correlationId, userId, tenantId, event name, message
     - Log on HTTP request received and plugin execution completion
     - _Requirements: 7.2_
 
-  - [ ] 13.3 Implement Prometheus metrics endpoint
+  - [x] 13.3 Implement Prometheus metrics endpoint
     - Expose `/metrics` endpoint with Prometheus format
     - Counters: plugin_execution_total (by status), plugin_timeout_total, security_signature_failures_total, security_capability_denied_total, security_revoked_execution_attempts
     - Histograms: plugin_execution_duration_ms, plugin_memory_usage_mb
     - Gauge: plugin_execution_active
     - _Requirements: 7.3_
 
-  - [ ] 13.4 Implement security event audit logging and metric integration
+  - [x] 13.4 Implement security event audit logging and metric integration
     - On security events (invalid_signature, hash_mismatch, capability_violation, timeout_exceeded, revoked_plugin_attempt): insert immutable audit_logs record
     - Include action, actor, target, result, timestamp
     - Increment corresponding security metric counter
     - _Requirements: 7.4_
 
-  - [ ] 13.5 Implement /health and /ready with dependency checks
+  - [x] 13.5 Implement /health and /ready with dependency checks
     - `/health`: return JSON with overall status + individual checks (database, Redis, storage)
     - `/ready`: return 200 only when ALL dependency checks pass (database, Redis, storage) and runtime initialization complete; IF any individual check fails THEN return 503 regardless of other checks passing
     - If OpenTelemetry collector unavailable: continue processing, buffer telemetry up to configurable limit (minimum: 0, where 0 disables buffering entirely and telemetry data is dropped)
@@ -415,7 +415,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 15. Inter-Extension Communication
-  - [ ] 15.1 Implement ExtensionCapability invoke logic
+  - [x] 15.1 Implement ExtensionCapability invoke logic
     - Verify checks in priority order: permission → existence → visibility
     - (1) Verify caller's manifest declares `extension:invoke:{targetId}` permission → CapabilityDeniedException if denied
     - (2) Verify target extension exists and has status Active → ExtensionNotFoundException if not found
@@ -423,21 +423,21 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - If multiple checks fail, return error for the highest-priority failed check (permission > existence > visibility)
     - _Requirements: 8.1_
 
-  - [ ] 15.2 Implement call depth limiting and circular invocation detection
+  - [x] 15.2 Implement call depth limiting and circular invocation detection
     - Maintain call stack in execution context
     - Reject invocation when call depth exceeds configurable maximum (default: 3)
     - Detect circular invocation (A → B → A) and reject with CircularInvocationException
     - Check call stack before each invoke
     - _Requirements: 8.2, 8.3_
 
-  - [ ] 15.3 Implement subscription workflow
+  - [x] 15.3 Implement subscription workflow
     - `POST /api/v1/extensions/{targetId}/subscribe` records subscription with status "Requested", reason, expected_usage
     - Target owner can Approve/Reject via decide endpoint
     - Subscription status transitions: Requested → Approved/Rejected
     - Subscription-based visibility requires status "Approved" and expires_at > now
     - _Requirements: 8.4, 8.5_
 
-  - [ ] 15.4 Implement timeout cascading and rate limiting for inter-extension calls
+  - [x] 15.4 Implement timeout cascading and rate limiting for inter-extension calls
     - Child timeout = min(target's manifest timeout_ms, caller's remaining time)
     - Enforce per-caller rate limit from target's `invocation_policy.rate_limit_per_caller`
     - Return RateLimitExceededException when exceeded
