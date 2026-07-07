@@ -200,6 +200,31 @@ public interface IRevocationChecker
 {
     Task<bool> IsRevokedAsync(Guid versionId, CancellationToken cancellationToken);
 }
+
+// --- Scalability Abstractions (multi-instance support) ---
+
+/// <summary>
+/// Distributed rate limiter. Start with InMemoryRateLimiter for single-instance,
+/// swap to RedisRateLimiter for multi-instance without changing business logic.
+/// </summary>
+public interface IRateLimiter
+{
+    Task<RateLimitResult> CheckAsync(string key, int maxRequests, TimeSpan window, CancellationToken cancellationToken);
+}
+
+public record RateLimitResult(bool IsAllowed, int Remaining, TimeSpan RetryAfter);
+
+/// <summary>
+/// Event bus for cross-instance coordination (hot-reload signals, plugin state changes).
+/// Start with InMemoryEventBus for single-instance, swap to RedisEventBus for multi-instance.
+/// </summary>
+public interface IPluginEventBus
+{
+    Task PublishAsync(PluginEvent pluginEvent, CancellationToken cancellationToken);
+    Task SubscribeAsync(string eventType, Func<PluginEvent, Task> handler, CancellationToken cancellationToken);
+}
+
+public record PluginEvent(string EventType, string PluginId, string? Version, DateTime Timestamp);
 ```
 
 **Domain Entities:**
@@ -371,15 +396,17 @@ public class ExecutionGovernor : IExecutionGovernor
     // Cooperative CPU cancellation (cancels token when MaxCpuMs exceeded)
 }
 
-// HotReloadManager — orchestrates version transitions
+// HotReloadManager — orchestrates version transitions, uses IPluginEventBus for multi-instance coordination
 public class HotReloadManager
 {
+    // Publishes reload event via IPluginEventBus so all instances coordinate
     // Stop new requests to old version
     // Drain active executions (max 30s)
     // Force-cancel if drain timeout exceeded
     // Unload old ALC
     // Load new version + warm-up
     // Resume traffic
+    // Subscribes to reload events from other instances via IPluginEventBus
 }
 ```
 
@@ -475,6 +502,36 @@ public class ObjectStorageService : IObjectStorageService
     // 50 MB max per object
     // Service identity write-only access
 }
+
+// --- Scalability Implementations ---
+
+// In-memory rate limiter (single-instance, default for development/testing)
+public class InMemoryRateLimiter : IRateLimiter
+{
+    // ConcurrentDictionary<string, SlidingWindowCounter>
+    // Suitable for single-instance deployment
+}
+
+// Redis rate limiter (multi-instance, swap via DI configuration)
+public class RedisRateLimiter : IRateLimiter
+{
+    // Redis INCR + EXPIRE for sliding window
+    // Shared counter across all instances
+}
+
+// In-memory event bus (single-instance, default for development/testing)
+public class InMemoryEventBus : IPluginEventBus
+{
+    // Channel<PluginEvent> for in-process pub/sub
+    // Suitable for single-instance deployment
+}
+
+// Redis event bus (multi-instance, swap via DI configuration)
+public class RedisEventBus : IPluginEventBus
+{
+    // Redis Pub/Sub for cross-instance coordination
+    // Broadcasts hot-reload signals, plugin state changes
+}
 ```
 
 ### 7. PluginRuntime.Api
@@ -513,7 +570,7 @@ public class ExtensionsController : ControllerBase
 
 // Middleware
 public class JwtAuthenticationMiddleware { /* Bearer token validation */ }
-public class RateLimitingMiddleware { /* Per-endpoint rate limiting, 429 + Retry-After */ }
+public class RateLimitingMiddleware { /* Delegates to IRateLimiter for per-endpoint rate limiting, 429 + Retry-After */ }
 public class ErrorHandlingMiddleware { /* Standardized error format */ }
 public class RequestValidationMiddleware { /* Body size limit 1 MB, JSON validation */ }
 ```

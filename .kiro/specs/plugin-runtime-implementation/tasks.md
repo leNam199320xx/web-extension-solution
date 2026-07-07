@@ -28,6 +28,9 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
 
   - [ ] 1.4 Define Core interfaces
     - Create `IPluginExecutor`, `IManifestValidator`, `ISignatureVerifier`, `IHashVerifier`, `IPluginLoader`, `IExecutionPipeline`, `ICapabilityResolver`, `IExecutionGovernor`, `IRevocationChecker` in `PluginRuntime.Core.Interfaces`
+    - Create `IRateLimiter` with `CheckAsync(key, maxRequests, window, CancellationToken)` returning `RateLimitResult(IsAllowed, Remaining, RetryAfter)` — abstraction for distributed rate limiting
+    - Create `IPluginEventBus` with `PublishAsync(PluginEvent, CancellationToken)` and `SubscribeAsync(eventType, handler, CancellationToken)` — abstraction for cross-instance coordination
+    - Create `RateLimitResult` and `PluginEvent` records in `PluginRuntime.Core.ValueObjects`
     - Ensure all async methods accept `CancellationToken`
     - _Requirements: 1.2_
 
@@ -75,12 +78,19 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Return `VerificationResult` with error code on mismatch
     - _Requirements: 2.2_
 
-  - [ ] 3.3 Implement SignatureVerifier and IKeyProvider
+  - [ ] 3.3 Implement SignatureVerifier with pluggable IKeyProvider
     - Support RSA-SHA256 (default) and ECDSA-SHA256 algorithms
-    - Load public key by `public_key_id` from `IKeyProvider`
+    - Load public key by `public_key_id` from `IKeyProvider` interface
     - Verify digital signature over canonical manifest content
     - Return `VerificationResult` with specific error code if signature invalid or key not found
     - _Requirements: 2.3_
+
+  - [ ] 3.4 Implement IKeyProvider abstraction for HSM/KMS integration
+    - Define `IKeyProvider` interface in Core with `GetPublicKeyAsync(keyId, CancellationToken)` and `ListKeyIdsAsync(CancellationToken)`
+    - Implement `InMemoryKeyProvider` for testing (loads keys from configuration)
+    - Implement `KmsKeyProvider` in Infrastructure.KeyVault (delegates to external KMS/HSM)
+    - Register via DI: tests use InMemory, production uses KMS (swap via config)
+    - _Requirements: 2.3, 10.5_
 
   - [ ] 3.4 Implement RevocationChecker with Redis cache
     - Query Redis cache first for revocation status
@@ -95,7 +105,14 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Return structured error response with category "Security"
     - _Requirements: 2.5_
 
-  - [ ]* 3.6 Write property-based tests for ManifestValidator
+  - [ ]* 3.6 Write performance benchmark for Security Engine
+    - Benchmark ManifestValidator: must complete in under 10ms at P95
+    - Benchmark SignatureVerifier (RSA-SHA256): must complete in under 20ms at P95
+    - Benchmark SignatureVerifier (ECDSA-SHA256): must complete in under 20ms at P95
+    - Run with BenchmarkDotNet, record baseline numbers for regression tracking
+    - _Requirements: 2.6_
+
+  - [ ]* 3.7 Write property-based tests for ManifestValidator
     - **Property 1: Valid manifests always pass validation**
     - **Property 2: Any single tampered field causes validation failure**
     - **Property 3: Expired manifests (expires_at < now) always fail**
@@ -143,6 +160,8 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - _Requirements: 3.5, 3.6, 3.7_
 
   - [ ] 5.4 Implement HotReloadManager for version transitions
+    - Publish reload event via `IPluginEventBus` so all instances coordinate
+    - Subscribe to reload events from other instances via `IPluginEventBus`
     - Stop new requests to old version
     - Drain active executions (max 30 seconds drain timeout)
     - Force-cancel via CancellationToken if drain timeout exceeded
@@ -151,19 +170,26 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Resume traffic with zero request interruption
     - _Requirements: 3.8, 3.9_
 
-  - [ ]* 5.5 Write unit tests for ExecutionPipeline
+  - [ ]* 5.5 Write performance benchmark for PluginLoader
+    - Benchmark cold plugin load: must complete in under 500ms
+    - Benchmark warm plugin load (cached ALC): must complete in under 100ms
+    - Use BenchmarkDotNet with realistic plugin DLL sizes (1 MB, 5 MB, 20 MB)
+    - Record baseline numbers for regression tracking
+    - _Requirements: 3.10_
+
+  - [ ]* 5.6 Write unit tests for ExecutionPipeline
     - Test pipeline stages execute in correct order
     - Test failures short-circuit with structured error
     - Test all 7 stages are invoked on successful execution
     - _Requirements: 3.11_
 
-  - [ ]* 5.6 Write unit tests for ExecutionGovernor
+  - [ ]* 5.7 Write unit tests for ExecutionGovernor
     - Test timeout enforcement terminates within bounds
     - Test memory limit enforcement terminates execution
     - Test CancellationToken propagation
     - _Requirements: 3.11_
 
-  - [ ]* 5.7 Write unit tests for PluginLoader and HotReloadManager
+  - [ ]* 5.8 Write unit tests for PluginLoader and HotReloadManager
     - Test ALC isolation prevents cross-plugin state sharing
     - Test hot-reload completes drain or force-cancels
     - Test resolution failure leaves no residual state
@@ -230,7 +256,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
 - [ ] 9. API Layer - HTTP Gateway & Controllers
   - [ ] 9.1 Configure API startup with middleware pipeline
     - Configure JWT authentication middleware (Bearer token validation)
-    - Configure rate limiting middleware (per-endpoint, configurable)
+    - Configure rate limiting middleware delegating to `IRateLimiter` (per-endpoint, configurable)
     - Configure error handling middleware (standardized error format)
     - Configure request validation middleware (1 MB body size limit, JSON validation)
     - Ensure API does not accept traffic until all middleware fully initialized
@@ -325,12 +351,23 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Connection timeout: 5 seconds
     - _Requirements: 6.7_
 
-  - [ ]* 11.7 Write tests for Infrastructure layer
+  - [ ] 11.7 Implement scalability abstractions (IRateLimiter and IPluginEventBus)
+    - Implement `InMemoryRateLimiter` using `ConcurrentDictionary<string, SlidingWindowCounter>` — default for single-instance/testing
+    - Implement `RedisRateLimiter` using Redis INCR + EXPIRE for sliding window — for multi-instance deployment
+    - Implement `InMemoryEventBus` using `Channel<PluginEvent>` for in-process pub/sub — default for single-instance/testing
+    - Implement `RedisEventBus` using Redis Pub/Sub for cross-instance coordination — for multi-instance deployment
+    - Register via DI configuration: single-instance uses InMemory*, multi-instance uses Redis* (swap via config, no business logic change)
+    - _Requirements: 5.6, 3.8_
+
+  - [ ]* 11.8 Write tests for Infrastructure layer
     - Test EF migrations apply without errors to empty database
     - Test repository CRUD operations for all 13 entities
     - Test audit_logs rejects UPDATE and DELETE attempts
     - Test Redis cache set/get/expire with TTL
     - Test soft-delete query filter excludes deleted records
+    - Test InMemoryRateLimiter allows/denies correctly based on window
+    - Test RedisRateLimiter with shared counter across simulated instances
+    - Test InMemoryEventBus delivers events to subscribers
     - _Requirements: 6.8_
 
 - [ ] 12. Checkpoint - Infrastructure complete
@@ -496,7 +533,15 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Verify payloads exceeding 50 MB are rejected
     - _Requirements: 10.5_
 
-  - [ ]* 19.5 Write cross-module property-based tests for correctness invariants
+  - [ ]* 19.5 Implement multi-instance coordination integration tests
+    - Simulate 2+ runtime instances with shared Redis
+    - Test RedisRateLimiter enforces global rate limit across instances (requests to instance A count against limit seen by instance B)
+    - Test RedisEventBus delivers hot-reload event from instance A to instance B
+    - Test HotReloadManager coordination: instance A triggers reload → instance B receives event and also reloads
+    - Verify no request is lost during coordinated multi-instance reload
+    - _Requirements: 3.8, 5.6_
+
+  - [ ]* 19.6 Write cross-module property-based tests for correctness invariants
     - **Property 12: Any validation failure results in execution rejection (fail-closed)**
     - **Property 13: Any undeclared capability request is denied (deny-by-default)**
     - **Property 14: No plugin execution can access another plugin's namespaced resources (isolation)**
@@ -504,12 +549,13 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Over at least 100 randomized inputs per property
     - **Validates: Requirements 10.6**
 
-  - [ ]* 19.6 Write performance baseline tests
-    - Verify cold plugin load under 500ms
-    - Verify warm plugin load under 100ms
-    - Verify manifest validation under 10ms
-    - Verify signature verification under 20ms
-    - Run under simulated load of 500 concurrent requests at P95
+  - [ ]* 19.7 Write performance load tests with NBomber
+    - Configure NBomber load testing framework in IntegrationTests project
+    - Scenario 1: 500 concurrent execute requests → verify P95 latency targets (cold < 500ms, warm < 100ms)
+    - Scenario 2: 500 concurrent manifest validations → verify P95 < 10ms
+    - Scenario 3: 500 concurrent signature verifications → verify P95 < 20ms
+    - Scenario 4: Mixed workload (execute + upload + reload) at 500 concurrent → verify no errors, no timeouts beyond configured limits
+    - Generate HTML report with latency percentiles, throughput, and error rates
     - _Requirements: 10.4_
 
 - [ ] 20. Final Checkpoint - All integration tests pass
@@ -521,10 +567,13 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation between phases
 - Property tests validate universal correctness properties (fail-closed, deny-by-default, isolation, immutability)
+- Performance benchmarks (3.6, 5.5, 19.7) use BenchmarkDotNet/NBomber for reproducible P95 measurements
 - Unit tests validate specific examples and edge cases
+- Multi-instance integration tests (19.5) require Redis to validate distributed coordination
 - The phased approach ensures each layer compiles and passes tests before building the next
 - All code uses C# with .NET 10, async/await, CancellationToken on every async path
 - Security > Performance > Convenience in all implementation decisions
+- IKeyProvider is separated from SignatureVerifier to enable HSM/KMS swap without touching verification logic
 
 ## Task Dependency Graph
 
@@ -534,11 +583,11 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     { "id": 0, "tasks": ["1.1", "1.2"] },
     { "id": 1, "tasks": ["1.3", "1.4", "1.5"] },
     { "id": 2, "tasks": ["1.6", "1.7", "1.8"] },
-    { "id": 3, "tasks": ["3.1", "3.2", "3.3"] },
-    { "id": 4, "tasks": ["3.4", "3.5"] },
-    { "id": 5, "tasks": ["3.6", "3.7", "3.8"] },
+    { "id": 3, "tasks": ["3.1", "3.2", "3.3", "3.4"] },
+    { "id": 4, "tasks": ["3.5", "3.6"] },
+    { "id": 5, "tasks": ["3.7", "3.8", "3.9"] },
     { "id": 6, "tasks": ["5.1", "5.2", "5.3"] },
-    { "id": 7, "tasks": ["5.4", "5.5", "5.6", "5.7"] },
+    { "id": 7, "tasks": ["5.4", "5.5", "5.6", "5.7", "5.8"] },
     { "id": 8, "tasks": ["7.1", "7.2", "7.3", "7.4", "7.5"] },
     { "id": 9, "tasks": ["7.6", "7.7"] },
     { "id": 10, "tasks": ["9.1", "9.5", "9.6"] },
@@ -546,7 +595,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     { "id": 12, "tasks": ["9.7"] },
     { "id": 13, "tasks": ["11.1", "11.4", "11.5"] },
     { "id": 14, "tasks": ["11.2", "11.3", "11.6"] },
-    { "id": 15, "tasks": ["11.7"] },
+    { "id": 15, "tasks": ["11.7", "11.8"] },
     { "id": 16, "tasks": ["13.1", "13.2", "13.3"] },
     { "id": 17, "tasks": ["13.4", "13.5", "13.6"] },
     { "id": 18, "tasks": ["15.1", "15.2", "15.3"] },
@@ -555,7 +604,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     { "id": 21, "tasks": ["17.2", "17.3", "17.4", "17.5"] },
     { "id": 22, "tasks": ["17.6", "17.7"] },
     { "id": 23, "tasks": ["19.1", "19.2", "19.3", "19.4"] },
-    { "id": 24, "tasks": ["19.5", "19.6"] }
+    { "id": 24, "tasks": ["19.5", "19.6", "19.7"] }
   ]
 }
 ```
