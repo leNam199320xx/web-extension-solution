@@ -1,0 +1,27 @@
+@* Displays a visible disconnection indicator and reconnect progress.
+   Used by Monitoring and Dashboard pages (Task 17.6). *@
+
+@if (HubState == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Reconnecting)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.WifiOff" Dense>
+        Connection lost — reconnecting (attempt @ReconnectAttempt / 10)…
+        <MudProgressLinear Indeterminate Color="Color.Warning" Class="mt-1" />
+    </MudAlert>
+}
+else if (HubState == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Disconnected && ReconnectExhausted)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Icon="@Icons.Material.Filled.WifiOff" Dense>
+        Unable to reconnect after 10 attempts. Please refresh the page to restore live updates.
+    </MudAlert>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Microsoft.AspNetCore.SignalR.Client.HubConnectionState HubState { get; set; }
+
+    [Parameter]
+    public int ReconnectAttempt { get; set; }
+
+    [Parameter]
+    public bool ReconnectExhausted { get; set; }
+}

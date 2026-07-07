@@ -1,6 +1,65 @@
 @page "/extensions"
+@inject PluginRuntimeApiClient ApiClient
 
 <PageTitle>Extensions - Plugin Runtime Admin</PageTitle>
 
-<MudText Typo="Typo.h4">Extensions</MudText>
-<MudText>Extension management will appear here.</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">Extensions</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_loadError</MudAlert>
+}
+
+<MudDataGrid T="ExtensionItem" Items="_items" Loading="_loading"
+             SortMode="SortMode.Multiple" Filterable Hover Striped>
+    <Columns>
+        <PropertyColumn Property="x => x.ExtensionId" Title="Extension ID" />
+        <PropertyColumn Property="x => x.DisplayName" Title="Name" />
+        <TemplateColumn Title="Visibility">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@VisibilityColor(ctx.Item.Visibility)">
+                    @ctx.Item.Visibility
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.Category" Title="Category" />
+        <PropertyColumn Property="x => x.SubscriberCount" Title="Subscribers" />
+        <PropertyColumn Property="x => x.UpdatedAt" Title="Updated" Format="yyyy-MM-dd" />
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private List<ExtensionItem> _items = [];
+    private bool _loading;
+    private string? _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = await ApiClient.GetExtensionsAsync() ?? [];
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load extensions: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static Color VisibilityColor(string v) => v switch
+    {
+        "Public"       => Color.Success,
+        "Subscription" => Color.Warning,
+        _              => Color.Default
+    };
+}

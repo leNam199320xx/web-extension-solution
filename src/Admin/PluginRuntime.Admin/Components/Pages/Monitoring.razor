@@ -1,6 +1,276 @@
 @page "/monitoring"
+@implements IAsyncDisposable
+@inject PluginRuntimeApiClient ApiClient
+@inject RuntimeHubConnection Hub
 
 <PageTitle>Monitoring - Plugin Runtime Admin</PageTitle>
 
-<MudText Typo="Typo.h4">Monitoring</MudText>
-<MudText>Live execution stream and historical logs will appear here.</MudText>
+<MudText Typo="Typo.h5" Class="mb-2">Monitoring</MudText>
+
+@* ── Connection status banner (Task 17.6) ────────────────────────── *@
+<ConnectionStatusBanner HubState="_hubState"
+                        ReconnectAttempt="_reconnectAttempt"
+                        ReconnectExhausted="_reconnectExhausted" />
+
+@* ── Live stream ─────────────────────────────────────────────────── *@
+<MudPaper Class="pa-3 mb-4" Elevation="2">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.LiveTv" Color="Color.Error" />
+        <MudText Typo="Typo.subtitle1" Class="ml-1">Live Execution Stream</MudText>
+        <MudSpacer />
+        <MudChip T="string" Icon="@Icons.Material.Filled.Circle"
+                 Color="@(Hub.IsConnected ? Color.Success : Color.Default)"
+                 Size="Size.Small">
+            @(Hub.IsConnected ? "Live" : "Offline")
+        </MudChip>
+    </MudStack>
+
+    @if (_liveEvents.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Waiting for execution events…</MudText>
+    }
+    else
+    {
+        <div style="max-height:200px; overflow-y:auto; font-size:0.78rem; font-family:monospace;">
+            @foreach (var ev in _liveEvents)
+            {
+                <div class="@LiveEventClass(ev.Status)">
+                    @ev.StartTime.ToString("HH:mm:ss")
+                    [@ev.Status]
+                    @ev.PluginName ?? ev.PluginId.ToString("D")[..8]
+                    — @(ev.DurationMs.HasValue ? $"{ev.DurationMs}ms" : "running")
+                    — @ev.TraceId[..16]…
+                </div>
+            }
+        </div>
+    }
+</MudPaper>
+
+@* ── Filters ──────────────────────────────────────────────────────── *@
+<MudExpansionPanels Class="mb-3">
+    <MudExpansionPanel Text="Filters">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField @bind-Value="_filterPluginName" Label="Plugin Name"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect @bind-Value="_filterStatus" Label="Status"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Clearable>
+                    <MudSelectItem Value="@((string?)null)">All</MudSelectItem>
+                    <MudSelectItem Value="@("Running")">Running</MudSelectItem>
+                    <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                    <MudSelectItem Value="@("Failed")">Failed</MudSelectItem>
+                    <MudSelectItem Value="@("Cancelled")">Cancelled</MudSelectItem>
+                    <MudSelectItem Value="@("Timeout")">Timeout</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudDatePicker @bind-Date="_filterFrom" Label="From"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudDatePicker @bind-Date="_filterTo" Label="To"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+        </MudGrid>
+        <MudStack Row Class="mt-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Search"
+                       OnClick="SearchAsync">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear</MudButton>
+        </MudStack>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@* ── Historical table ─────────────────────────────────────────────── *@
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_loadError</MudAlert>
+}
+
+<MudDataGrid T="ExecutionSummary" Items="_page?.Items ?? []"
+             Loading="_loading" Hover Striped>
+    <Columns>
+        <PropertyColumn Property="x => x.ExecutionId" Title="ID">
+            <CellTemplate Context="ctx">
+                <MudText Typo="Typo.body2" Style="font-family:monospace;">
+                    @ctx.Item.ExecutionId.ToString("D")[..8]…
+                </MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.PluginName" Title="Plugin" />
+        <TemplateColumn Title="Status">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Color="@StatusColor(ctx.Item.Status)" Size="Size.Small">
+                    @ctx.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.DurationMs" Title="Duration (ms)" />
+        <PropertyColumn Property="x => x.StartTime" Title="Started" Format="yyyy-MM-dd HH:mm:ss" />
+        <PropertyColumn Property="x => x.TraceId" Title="Trace ID">
+            <CellTemplate Context="ctx">
+                <MudText Typo="Typo.body2" Style="font-family:monospace;">
+                    @ctx.Item.TraceId[..Math.Min(16, ctx.Item.TraceId.Length)]…
+                </MudText>
+            </CellTemplate>
+        </PropertyColumn>
+    </Columns>
+</MudDataGrid>
+
+@* ── Pagination ───────────────────────────────────────────────────── *@
+@if (_page is not null && _page.TotalCount > 0)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mt-3">
+        <MudText Typo="Typo.body2">
+            Showing @((_currentPage - 1) * 50 + 1)–@Math.Min(_currentPage * 50, _page.TotalCount)
+            of @_page.TotalCount
+        </MudText>
+        <MudPagination Count="@TotalPages"
+                       SelectedChanged="OnPageChanged" />
+    </MudStack>
+}
+
+@code {
+    // ── Live stream state ────────────────────────────────────────────
+    private readonly List<ExecutionSummary> _liveEvents = [];
+    private const int MaxLiveEvents = 100;
+    private IDisposable? _execSubscription;
+
+    // ── Historical table state ───────────────────────────────────────
+    private PagedResult<ExecutionSummary>? _page;
+    private bool _loading;
+    private string? _loadError;
+    private int _currentPage = 1;
+    private int TotalPages => _page is null ? 1 : (int)Math.Ceiling(_page.TotalCount / 50.0);
+
+    // ── Filters ──────────────────────────────────────────────────────
+    private string? _filterPluginName;
+    private string? _filterStatus;
+    private DateTime? _filterFrom;
+    private DateTime? _filterTo;
+
+    // ── Hub state ────────────────────────────────────────────────────
+    private Microsoft.AspNetCore.SignalR.Client.HubConnectionState _hubState =
+        Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Disconnected;
+    private int _reconnectAttempt;
+    private bool _reconnectExhausted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoricalAsync();
+        await ConnectHubAsync();
+    }
+
+    private async Task ConnectHubAsync()
+    {
+        Hub.StateChanged += OnHubStateChanged;
+
+        _execSubscription = Hub.On<ExecutionSummary>("ExecutionUpdate", ev =>
+        {
+            _liveEvents.Insert(0, ev);
+            if (_liveEvents.Count > MaxLiveEvents)
+                _liveEvents.RemoveAt(_liveEvents.Count - 1);
+            InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await Hub.StartAsync();
+            _hubState = Hub.State;
+        }
+        catch { /* hub optional — page still shows historical data */ }
+    }
+
+    private Task OnHubStateChanged(Microsoft.AspNetCore.SignalR.Client.HubConnectionState state)
+    {
+        _hubState = state;
+        if (state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Reconnecting)
+            _reconnectAttempt++;
+        else if (state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected)
+        {
+            _reconnectAttempt = 0;
+            _reconnectExhausted = false;
+        }
+        else if (state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Disconnected)
+            _reconnectExhausted = true;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadHistoricalAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+        try
+        {
+            _page = await ApiClient.GetExecutionsAsync(
+                _filterPluginName, _filterStatus,
+                _filterFrom, _filterTo,
+                _currentPage);
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load executions: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        _currentPage = 1;
+        await LoadHistoricalAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        _filterPluginName = null;
+        _filterStatus = null;
+        _filterFrom = null;
+        _filterTo = null;
+        _currentPage = 1;
+        await LoadHistoricalAsync();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadHistoricalAsync();
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Running"   => Color.Info,
+        "Failed"    => Color.Error,
+        "Timeout"   => Color.Warning,
+        "Cancelled" => Color.Default,
+        _           => Color.Default
+    };
+
+    private static string LiveEventClass(string status) => status switch
+    {
+        "Failed"  or "Timeout"  => "mud-error-text",
+        "Running"               => "mud-info-text",
+        "Completed"             => "mud-success-text",
+        _                       => ""
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.StateChanged -= OnHubStateChanged;
+        _execSubscription?.Dispose();
+        await ValueTask.CompletedTask;
+    }
+}

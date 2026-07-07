@@ -1,6 +1,209 @@
 @page "/audit"
+@inject PluginRuntimeApiClient ApiClient
 
 <PageTitle>Audit - Plugin Runtime Admin</PageTitle>
 
-<MudText Typo="Typo.h4">Audit</MudText>
-<MudText>Audit log viewer with filtering will appear here.</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">Audit Log</MudText>
+
+@* ── Filters ──────────────────────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField @bind-Value="_filterActorId"
+                          Label="Actor ID"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Person"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField @bind-Value="_filterAction"
+                          Label="Action"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.FlashOn"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField @bind-Value="_filterResourceType"
+                          Label="Resource Type"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Category"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect @bind-Value="_filterResult"
+                       Label="Result"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Clearable>
+                <MudSelectItem Value="@((string?)null)">All</MudSelectItem>
+                <MudSelectItem Value="@("Success")">Success</MudSelectItem>
+                <MudSelectItem Value="@("Failure")">Failure</MudSelectItem>
+                <MudSelectItem Value="@("Denied")">Denied</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker @bind-Date="_filterFrom"
+                           Label="From"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker @bind-Date="_filterTo"
+                           Label="To"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="12" md="6" Class="d-flex align-end">
+            <MudStack Row Spacing="2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Search"
+                           OnClick="SearchAsync">
+                    Search
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="ClearFilters">
+                    Clear
+                </MudButton>
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* ── Results ──────────────────────────────────────────────────────── *@
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_loadError</MudAlert>
+}
+
+<MudDataGrid T="AuditLogItem" Items="_page?.Items ?? []"
+             Loading="_loading" Hover Striped Dense>
+    <Columns>
+        <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" Format="yyyy-MM-dd HH:mm:ss" />
+        <PropertyColumn Property="x => x.ActorId" Title="Actor ID" />
+        <TemplateColumn Title="Actor Type">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(ctx.Item.ActorType == "System" ? Color.Info : Color.Default)">
+                    @ctx.Item.ActorType
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.Action" Title="Action" />
+        <PropertyColumn Property="x => x.ResourceType" Title="Resource Type" />
+        <PropertyColumn Property="x => x.ResourceId" Title="Resource ID">
+            <CellTemplate Context="ctx">
+                <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.78rem;">
+                    @ctx.Item.ResourceId[..Math.Min(12, ctx.Item.ResourceId.Length)]…
+                </MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Result">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Size="Size.Small" Color="@ResultColor(ctx.Item.Result)">
+                    @ctx.Item.Result
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.IpAddress" Title="IP Address" />
+    </Columns>
+</MudDataGrid>
+
+@* ── Pagination ───────────────────────────────────────────────────── *@
+@if (_page is not null && _page.TotalCount > 0)
+{
+    <MudStack Row AlignItems="AlignItems.Center"
+              Class="mt-3">
+        <MudText Typo="Typo.body2">
+            Showing @((_currentPage - 1) * 50 + 1)–@Math.Min(_currentPage * 50, _page.TotalCount)
+            of @_page.TotalCount records
+        </MudText>
+        <MudPagination Count="@TotalPages"
+                      SelectedChanged="OnPageChanged" />
+    </MudStack>
+}
+
+@code {
+    private PagedResult<AuditLogItem>? _page;
+    private bool _loading;
+    private string? _loadError;
+    private int _currentPage = 1;
+    private int TotalPages => _page is null ? 1 : (int)Math.Ceiling(_page.TotalCount / 50.0);
+
+    // Filters
+    private string? _filterActorId;
+    private string? _filterAction;
+    private string? _filterResourceType;
+    private string? _filterResult;
+    private DateTime? _filterFrom;
+    private DateTime? _filterTo;
+
+    protected override async Task OnInitializedAsync()
+        => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+        try
+        {
+            _page = await ApiClient.GetAuditLogsAsync(
+                actorId: _filterActorId,
+                action: _filterAction,
+                resourceType: _filterResourceType,
+                from: _filterFrom,
+                to: _filterTo,
+                result: _filterResult,
+                page: _currentPage);
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load audit logs: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        _currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        _filterActorId = null;
+        _filterAction = null;
+        _filterResourceType = null;
+        _filterResult = null;
+        _filterFrom = null;
+        _filterTo = null;
+        _currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadAsync();
+    }
+
+    private static Color ResultColor(string result) => result switch
+    {
+        "Success" => Color.Success,
+        "Failure" => Color.Error,
+        "Denied"  => Color.Warning,
+        _         => Color.Default
+    };
+}
