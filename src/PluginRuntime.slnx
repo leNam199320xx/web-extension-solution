@@ -5,6 +5,9 @@
   <Folder Name="/API/">
     <Project Path="API/PluginRuntime.Api/PluginRuntime.Api.csproj" />
   </Folder>
+  <Folder Name="/Monolith/">
+    <Project Path="PluginRuntime.Api/PluginRuntime.Api.csproj" />
+  </Folder>
   <Folder Name="/Capabilities/">
     <Project Path="Capabilities/PluginRuntime.Capabilities.Abstractions/PluginRuntime.Capabilities.Abstractions.csproj" />
     <Project Path="Capabilities/PluginRuntime.Capabilities.Cache/PluginRuntime.Capabilities.Cache.csproj" />
@@ -33,5 +36,6 @@
     <Project Path="Tests/PluginRuntime.IntegrationTests/PluginRuntime.IntegrationTests.csproj" />
     <Project Path="Tests/PluginRuntime.Runtime.Tests/PluginRuntime.Runtime.Tests.csproj" />
     <Project Path="Tests/PluginRuntime.Security.Tests/PluginRuntime.Security.Tests.csproj" />
+    <Project Path="..\tests\PluginRuntime.Api.Tests\PluginRuntime.Api.Tests.csproj" />
   </Folder>
 </Solution>

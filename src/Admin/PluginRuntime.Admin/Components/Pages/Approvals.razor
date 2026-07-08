@@ -1,6 +1,256 @@
 @page "/approvals"
+@implements IAsyncDisposable
+@inject PluginRuntimeApiClient ApiClient
+@inject ISnackbar Snackbar
 
 <PageTitle>Approvals - Plugin Runtime Admin</PageTitle>
 
-<MudText Typo="Typo.h4">Approvals</MudText>
-<MudText>Permission review and approval workflow will appear here.</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">Approvals</MudText>
+
+@* ── Status filter tabs ─────────────────────────────────────────── *@
+<MudTabs @bind-ActivePanelIndex="_tabIndex" Class="mb-4" Rounded Outlined>
+    <MudTabPanel Text="Pending" />
+    <MudTabPanel Text="Approved" />
+    <MudTabPanel Text="Rejected" />
+</MudTabs>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_loadError</MudAlert>
+}
+
+<MudDataGrid T="ApprovalItem" Items="_items" Loading="_loading"
+             SortMode="SortMode.Multiple" Filterable Hover Striped>
+    <Columns>
+        <PropertyColumn Property="x => x.PluginName" Title="Plugin" />
+        <PropertyColumn Property="x => x.Version" Title="Version" />
+        <PropertyColumn Property="x => x.Author" Title="Author" />
+        <PropertyColumn Property="x => x.UploadedAt" Title="Uploaded" Format="yyyy-MM-dd HH:mm" />
+        <TemplateColumn Title="Risk">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Color="@RiskColor(ctx.Item.RiskLevel)" Size="Size.Small">
+                    @ctx.Item.RiskLevel
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Actions" Sortable="false">
+            <CellTemplate Context="ctx">
+                <MudStack Row Spacing="1">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               OnClick="() => OpenPermissionReview(ctx.Item)">
+                        Review
+                    </MudButton>
+                    @if (ctx.Item.Status == "Pending")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   OnClick="() => OpenDecisionDialog(ctx.Item, true)">
+                            Approve
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   OnClick="() => OpenDecisionDialog(ctx.Item, false)">
+                            Reject
+                        </MudButton>
+                    }
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+@* ── Permission review drawer ────────────────────────────────────── *@
+<MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.End" Width="480px" Elevation="4">
+    <MudDrawerHeader>
+        <MudText Typo="Typo.h6">Permission Review</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="() => _drawerOpen = false" />
+    </MudDrawerHeader>
+    <MudDrawerContainer Class="pa-4">
+        @if (_reviewLoading)
+        {
+            <MudProgressCircular Indeterminate />
+        }
+        else if (_review is not null)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mb-2">
+                Risk Level:
+                <MudChip T="string" Color="@RiskColor(_review.OverallRiskLevel)" Size="Size.Small">
+                    @_review.OverallRiskLevel
+                </MudChip>
+            </MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Permissions</MudText>
+            <MudPaper Class="pa-2 mb-3" Style="background:#f5f5f5; overflow:auto; max-height:300px;">
+                <pre style="font-size:0.78rem; margin:0;">@System.Text.Json.JsonSerializer.Serialize(_review.Permissions, _jsonOpts)</pre>
+            </MudPaper>
+            @if (_review.PermissionDiff is not null)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Permission Diff (vs previous version)</MudText>
+                <MudPaper Class="pa-2" Style="background:#f5f5f5; overflow:auto; max-height:200px;">
+                    <pre style="font-size:0.78rem; margin:0;">@System.Text.Json.JsonSerializer.Serialize(_review.PermissionDiff, _jsonOpts)</pre>
+                </MudPaper>
+            }
+        }
+    </MudDrawerContainer>
+</MudDrawer>
+
+@* ── Decision dialog ─────────────────────────────────────────────── *@
+<MudDialog @bind-Visible="_dialogOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_approving ? "Approve" : "Reject") Plugin</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Class="mb-3">
+            @(_approving ? "Approve" : "Reject")
+            <strong>@_selectedItem?.PluginName v@(_selectedItem?.Version)</strong>?
+        </MudText>
+        <MudTextField @bind-Value="_comment"
+                      Label="Comment (max 2000 chars)"
+                      Lines="4"
+                      MaxLength="2000"
+                      Variant="Variant.Outlined"
+                      FullWidth />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _dialogOpen = false">Cancel</MudButton>
+        <MudButton Color="@(_approving ? Color.Success : Color.Error)"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitDecision"
+                   Disabled="_submitting">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" />
+            }
+            Confirm
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ApprovalItem> _items = [];
+    private bool _loading;
+    private string? _loadError;
+    private int _tabIndex;
+    private int _prevTabIndex = -1;
+
+    private bool _drawerOpen;
+    private PermissionReviewDetail? _review;
+    private bool _reviewLoading;
+
+    private bool _dialogOpen;
+    private bool _approving;
+    private bool _submitting;
+    private ApprovalItem? _selectedItem;
+    private string _comment = string.Empty;
+
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonOpts = new()
+    {
+        WriteIndented = true
+    };
+
+    private static string[] StatusLabels = ["Pending", "Approved", "Rejected"];
+
+    protected override async Task OnInitializedAsync()
+        => await LoadAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_tabIndex != _prevTabIndex)
+        {
+            _prevTabIndex = _tabIndex;
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        _items = [];
+        StateHasChanged();
+        try
+        {
+            var status = StatusLabels[_tabIndex];
+            _items = await ApiClient.GetApprovalsAsync(status) ?? [];
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load approvals: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenPermissionReview(ApprovalItem item)
+    {
+        _review = null;
+        _reviewLoading = true;
+        _drawerOpen = true;
+        StateHasChanged();
+        try
+        {
+            _review = await ApiClient.GetPermissionReviewAsync(item.VersionId);
+        }
+        catch
+        {
+            _review = null;
+        }
+        finally
+        {
+            _reviewLoading = false;
+        }
+    }
+
+    private void OpenDecisionDialog(ApprovalItem item, bool approve)
+    {
+        _selectedItem = item;
+        _approving = approve;
+        _comment = string.Empty;
+        _dialogOpen = true;
+    }
+
+    private async Task SubmitDecision()
+    {
+        if (_selectedItem is null) return;
+        _submitting = true;
+        try
+        {
+            bool ok = _approving
+                ? await ApiClient.ApproveVersionAsync(_selectedItem.VersionId, _comment)
+                : await ApiClient.RejectVersionAsync(_selectedItem.VersionId, _comment);
+
+            if (ok)
+            {
+                Snackbar.Add(_approving ? "Version approved." : "Version rejected.", Severity.Success);
+                _dialogOpen = false;
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add("Operation failed. Please try again.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private static Color RiskColor(string risk) => risk switch
+    {
+        "Critical" => Color.Error,
+        "High"     => Color.Warning,
+        "Medium"   => Color.Info,
+        _          => Color.Default
+    };
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

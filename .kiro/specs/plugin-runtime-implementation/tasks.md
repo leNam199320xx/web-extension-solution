@@ -461,35 +461,35 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 17. Admin Portal - Management UI
-  - [ ] 17.1 Create Blazor Server project with MudBlazor and navigation structure
+  - [x] 17.1 Create Blazor Server project with MudBlazor and navigation structure
     - Configure Blazor Server application with MudBlazor UI components
     - Create navigation structure: Dashboard, Extensions, Approvals, Monitoring, Audit, Marketplace pages
     - Configure typed HttpClient to PluginRuntime.Api with Bearer JWT authentication
     - _Requirements: 9.1, 9.6_
 
-  - [ ] 17.2 Implement Dashboard page with real-time metrics
+  - [x] 17.2 Implement Dashboard page with real-time metrics
     - Display system metrics: active plugin count, total execution count, error rate %, CPU %, memory %
     - Configure SignalR for real-time updates (within 5 seconds of change)
     - _Requirements: 9.2_
 
-  - [ ] 17.3 Implement Approvals page with permission review
+  - [x] 17.3 Implement Approvals page with permission review
     - Display: plugin name, version, author, upload timestamp, manifest permissions, risk level, per-permission risk, permission diff, capability requests, auto-generated flags
     - Admin actions: Approved, ApprovedWithConditions, Rejected, NeedsInfo with comment (max 2000 chars)
     - _Requirements: 9.3_
 
-  - [ ] 17.4 Implement Monitoring page with live execution stream
+  - [x] 17.4 Implement Monitoring page with live execution stream
     - Live execution stream via SignalR (within 5 seconds)
     - Historical logs paginated at 50 records/page
     - Filtering by plugin name, status (Running/Completed/Failed/Cancelled/Timeout), time range
     - Each entry: executionId, pluginId, status, durationMs, traceId
     - _Requirements: 9.4_
 
-  - [ ] 17.5 Implement Audit page with filtering
+  - [x] 17.5 Implement Audit page with filtering
     - Filter by actor (actor_id), action, resource type, time range, result (Success/Failure/Denied)
     - Results paginated at 50 records/page
     - _Requirements: 9.5_
 
-  - [ ] 17.6 Implement SignalR reconnection handling
+  - [x] 17.6 Implement SignalR reconnection handling
     - Display visible disconnection indicator on connection loss
     - Automatic reconnection at 5-second intervals
     - Maximum 10 reconnection attempts
@@ -506,26 +506,26 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 19. Integration Testing & Security Hardening
-  - [ ] 19.1 Implement end-to-end integration test traversing full execution flow
+  - [x] 19.1 Implement end-to-end integration test traversing full execution flow
     - Test scenario: Plugin Upload → Security Scan → Approval + Signing → Plugin Repository → Runtime Request → Manifest Validation → Signature Check → Capability Resolution → Isolated Execution → Observability
     - Each stage produces verifiable output (HTTP response, database record, or telemetry trace)
     - _Requirements: 10.1_
 
-  - [ ] 19.2 Implement security rejection integration tests
+  - [x] 19.2 Implement security rejection integration tests
     - Test tampered binary (SHA-256 mismatch) rejected at HashVerifier stage
     - Test forged manifest (invalid signature) rejected at SignatureVerifier stage
     - Test undeclared capability rejected at CapabilityResolver stage
     - Each rejection produces immutable audit log entry with TraceId, PluginId, reason, timestamp
     - _Requirements: 10.2_
 
-  - [ ] 19.3 Implement concurrent isolation integration tests
+  - [x] 19.3 Implement concurrent isolation integration tests
     - Execute 10+ plugins concurrently
     - Verify no plugin can read/write another's namespaced data (storage, cache, DB schema)
     - Verify no plugin can invoke capabilities not in its manifest
     - Verify no plugin's ALC shares mutable state with another
     - _Requirements: 10.3_
 
-  - [ ] 19.4 Implement security hardening verification tests
+  - [x] 19.4 Implement security hardening verification tests
     - Verify no secrets in source code or compiled assemblies
     - Verify signing keys accessed exclusively via KMS/HSM provider interface
     - Verify all endpoints except /health and /ready return 401 without Bearer token

@@ -1,6 +1,85 @@
 @page "/marketplace"
+@inject PluginRuntimeApiClient ApiClient
 
 <PageTitle>Marketplace - Plugin Runtime Admin</PageTitle>
 
-<MudText Typo="Typo.h4">Marketplace</MudText>
-<MudText>Extension marketplace and discovery will appear here.</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">Marketplace</MudText>
+<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+    Browse publicly available extensions that can be subscribed to.
+</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_loadError</MudAlert>
+}
+
+<MudGrid>
+    @foreach (var ext in _publicExtensions)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">@ext.DisplayName</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">@ext.Visibility</MudChip>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (!string.IsNullOrEmpty(ext.Category))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="mb-2">@ext.Category</MudChip>
+                    }
+                    <MudText Typo="Typo.body2">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" />
+                        @ext.SubscriberCount subscribers
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
+                        Subscribe
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+
+    @if (!_loading && _publicExtensions.Count == 0)
+    {
+        <MudItem xs="12">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                No public extensions available yet.
+            </MudText>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private List<ExtensionItem> _publicExtensions = [];
+    private bool _loading;
+    private string? _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var all = await ApiClient.GetExtensionsAsync() ?? [];
+            _publicExtensions = all
+                .Where(e => e.Visibility is "Public" or "Subscription")
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load marketplace: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

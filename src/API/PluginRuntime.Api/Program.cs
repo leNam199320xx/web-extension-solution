@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using PluginRuntime.Api.Configuration;
 using PluginRuntime.Api.Middleware;
 using PluginRuntime.Api.Observability;
-using PluginRuntime.Capabilities.Extension;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +42,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// --- Plugin Runtime DI Composition Root ---
+builder.Services.AddPluginRuntimeServices(builder.Configuration);
+
 // --- OpenTelemetry Tracing ---
 builder.Services.AddPluginRuntimeTracing(builder.Configuration);
 
@@ -54,9 +57,6 @@ builder.Services.AddHealthChecks();
 
 // --- Controllers with /api/v1 prefix via route convention ---
 builder.Services.AddControllers();
-
-// --- Subscription Service ---
-builder.Services.AddScoped<SubscriptionService>();
 
 // --- Metrics ---
 builder.Services.AddPluginRuntimeMetrics();

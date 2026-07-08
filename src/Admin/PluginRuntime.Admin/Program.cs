@@ -8,6 +8,9 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
+// SignalR — required for real-time updates in Monitoring and Dashboard
+builder.Services.AddSignalR();
+
 builder.Services.AddHttpClient<PluginRuntimeApiClient>(client =>
 {
     var baseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:5001";
@@ -15,6 +18,9 @@ builder.Services.AddHttpClient<PluginRuntimeApiClient>(client =>
 });
 
 builder.Services.AddScoped<AuthTokenProvider>();
+
+// SignalR hub connection factory — scoped so each browser tab gets its own connection
+builder.Services.AddScoped<RuntimeHubConnection>();
 
 var app = builder.Build();
 

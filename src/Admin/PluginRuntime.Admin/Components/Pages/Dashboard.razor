@@ -1,7 +1,176 @@
 @page "/"
 @page "/dashboard"
+@implements IAsyncDisposable
+@inject PluginRuntimeApiClient ApiClient
+@inject RuntimeHubConnection Hub
 
 <PageTitle>Dashboard - Plugin Runtime Admin</PageTitle>
 
-<MudText Typo="Typo.h4">Dashboard</MudText>
-<MudText>System metrics will appear here.</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">Dashboard</MudText>
+
+@* ── Connection status banner (Task 17.6) ────────────────────────── *@
+<ConnectionStatusBanner HubState="_hubState"
+                        ReconnectAttempt="_reconnectAttempt"
+                        ReconnectExhausted="_reconnectExhausted" />
+
+@* ── Metric cards ────────────────────────────────────────────────── *@
+<MudGrid>
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Extension" Color="Color.Primary" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Active Plugins</MudText>
+                    <MudText Typo="Typo.h4">@(_metrics?.ActivePluginCount.ToString() ?? "—")</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Color="Color.Success" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Executions</MudText>
+                    <MudText Typo="Typo.h4">@(_metrics?.TotalExecutionCount.ToString("N0") ?? "—")</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Error Rate</MudText>
+                    <MudText Typo="Typo.h4">@(_metrics is not null ? $"{_metrics.ErrorRatePercent:F1}%" : "—")</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Warning" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">CPU Usage</MudText>
+                    <MudText Typo="Typo.h4">@(_metrics is not null ? $"{_metrics.CpuPercent:F1}%" : "—")</MudText>
+                    @if (_metrics is not null)
+                    {
+                        <MudProgressLinear Value="_metrics.CpuPercent" Color="Color.Warning" Class="mt-1" />
+                    }
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Memory Usage</MudText>
+                    <MudText Typo="Typo.h4">@(_metrics is not null ? $"{_metrics.MemoryPercent:F1}%" : "—")</MudText>
+                    @if (_metrics is not null)
+                    {
+                        <MudProgressLinear Value="_metrics.MemoryPercent" Color="Color.Info" Class="mt-1" />
+                    }
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.RunCircle" Color="Color.Tertiary" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Running Now</MudText>
+                    <MudText Typo="Typo.h4">@(_metrics?.RunningExecutions.ToString() ?? "—")</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_loadError</MudAlert>
+}
+
+@code {
+    private DashboardMetrics? _metrics;
+    private string? _loadError;
+    private Microsoft.AspNetCore.SignalR.Client.HubConnectionState _hubState =
+        Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Disconnected;
+    private int _reconnectAttempt;
+    private bool _reconnectExhausted;
+    private IDisposable? _metricsSubscription;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMetricsAsync();
+        await ConnectHubAsync();
+    }
+
+    private async Task LoadMetricsAsync()
+    {
+        try
+        {
+            _metrics = await ApiClient.GetDashboardMetricsAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not load metrics: {ex.Message}";
+        }
+    }
+
+    private async Task ConnectHubAsync()
+    {
+        Hub.StateChanged += OnHubStateChanged;
+
+        // Subscribe to live metric pushes before connecting
+        _metricsSubscription = Hub.On<DashboardMetrics>("MetricsUpdate", metrics =>
+        {
+            _metrics = metrics;
+            InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await Hub.StartAsync();
+            _hubState = Hub.State;
+        }
+        catch
+        {
+            // Hub unavailable — page still shows polling data
+        }
+    }
+
+    private Task OnHubStateChanged(Microsoft.AspNetCore.SignalR.Client.HubConnectionState state)
+    {
+        _hubState = state;
+
+        if (state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Reconnecting)
+            _reconnectAttempt++;
+        else if (state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected)
+        {
+            _reconnectAttempt = 0;
+            _reconnectExhausted = false;
+        }
+        else if (state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Disconnected)
+            _reconnectExhausted = true;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.StateChanged -= OnHubStateChanged;
+        _metricsSubscription?.Dispose();
+        await ValueTask.CompletedTask;
+    }
+}
