@@ -1,0 +1,52 @@
+[
+  {
+    "AggregateId": "b8c9d0e1-0001-0001-0001-000000000001",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "Date": "2024-07-01",
+    "TotalRequests": 8542,
+    "SuccessfulRequests": 8210,
+    "FailedRequests": 332,
+    "AvgDurationMs": 145.3,
+    "AggregatedAt": "2024-07-02T01:00:00Z"
+  },
+  {
+    "AggregateId": "b8c9d0e1-0001-0001-0001-000000000002",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "Date": "2024-07-02",
+    "TotalRequests": 9120,
+    "SuccessfulRequests": 8905,
+    "FailedRequests": 215,
+    "AvgDurationMs": 132.7,
+    "AggregatedAt": "2024-07-03T01:00:00Z"
+  },
+  {
+    "AggregateId": "b8c9d0e1-0001-0001-0001-000000000003",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000002",
+    "Date": "2024-07-01",
+    "TotalRequests": 87,
+    "SuccessfulRequests": 85,
+    "FailedRequests": 2,
+    "AvgDurationMs": 210.5,
+    "AggregatedAt": "2024-07-02T01:00:00Z"
+  },
+  {
+    "AggregateId": "b8c9d0e1-0001-0001-0001-000000000004",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "Date": "2024-07-01",
+    "TotalRequests": 45230,
+    "SuccessfulRequests": 44980,
+    "FailedRequests": 250,
+    "AvgDurationMs": 89.2,
+    "AggregatedAt": "2024-07-02T01:00:00Z"
+  },
+  {
+    "AggregateId": "b8c9d0e1-0001-0001-0001-000000000005",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "Date": "2024-07-02",
+    "TotalRequests": 51000,
+    "SuccessfulRequests": 50750,
+    "FailedRequests": 250,
+    "AvgDurationMs": 92.1,
+    "AggregatedAt": "2024-07-03T01:00:00Z"
+  }
+]

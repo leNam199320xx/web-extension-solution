@@ -1,0 +1,57 @@
+[
+  {
+    "KeyId": "c3d4e5f6-0001-0001-0001-000000000001",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "KeyHash": "a9f2c3b1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+    "KeyPrefix": "acme_pro",
+    "KeySuffix": "x7k9",
+    "Status": "Active",
+    "ExpiresAt": "2025-03-15T10:30:00Z",
+    "CreatedAt": "2024-03-15T10:30:00Z",
+    "RevokedAt": null
+  },
+  {
+    "KeyId": "c3d4e5f6-0001-0001-0001-000000000002",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "KeyHash": "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2",
+    "KeyPrefix": "acme_dev",
+    "KeySuffix": "m3p5",
+    "Status": "Active",
+    "ExpiresAt": null,
+    "CreatedAt": "2024-04-01T08:00:00Z",
+    "RevokedAt": null
+  },
+  {
+    "KeyId": "c3d4e5f6-0001-0001-0001-000000000003",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000002",
+    "KeyHash": "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+    "KeyPrefix": "startup_",
+    "KeySuffix": "q2w4",
+    "Status": "Active",
+    "ExpiresAt": "2025-05-20T08:00:00Z",
+    "CreatedAt": "2024-05-20T08:00:00Z",
+    "RevokedAt": null
+  },
+  {
+    "KeyId": "c3d4e5f6-0001-0001-0001-000000000004",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "KeyHash": "e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    "KeyPrefix": "ent_prod",
+    "KeySuffix": "z8y6",
+    "Status": "Active",
+    "ExpiresAt": null,
+    "CreatedAt": "2024-02-01T09:00:00Z",
+    "RevokedAt": null
+  },
+  {
+    "KeyId": "c3d4e5f6-0001-0001-0001-000000000005",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "KeyHash": "f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7",
+    "KeyPrefix": "acme_old",
+    "KeySuffix": "r1t3",
+    "Status": "Revoked",
+    "ExpiresAt": null,
+    "CreatedAt": "2024-02-01T10:00:00Z",
+    "RevokedAt": "2024-05-01T12:00:00Z"
+  }
+]

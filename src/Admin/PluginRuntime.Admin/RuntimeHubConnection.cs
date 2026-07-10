@@ -38,8 +38,21 @@ public sealed class RuntimeHubConnection : IAsyncDisposable
     /// </summary>
     public async Task StartAsync(CancellationToken ct = default)
     {
-        if (_connection is not null && _connection.State != HubConnectionState.Disconnected)
+        EnsureConnectionBuilt();
+
+        if (_connection!.State != HubConnectionState.Disconnected)
             return;
+
+        await _connection.StartAsync(ct);
+        _reconnectAttempts = 0;
+
+        if (StateChanged is not null)
+            await StateChanged.Invoke(HubConnectionState.Connected);
+    }
+
+    private void EnsureConnectionBuilt()
+    {
+        if (_connection is not null) return;
 
         var hubUrl = _config["Api:HubUrl"] ?? "https://localhost:5001/hubs/runtime";
 
@@ -48,7 +61,6 @@ public sealed class RuntimeHubConnection : IAsyncDisposable
             .WithAutomaticReconnect(new ReconnectPolicy(MaxReconnectAttempts, ReconnectInterval))
             .Build();
 
-        // Wire up state-change callbacks
         _connection.Reconnecting += async _ =>
         {
             _reconnectAttempts++;
@@ -70,27 +82,18 @@ public sealed class RuntimeHubConnection : IAsyncDisposable
             _logger.LogError(ex, "SignalR connection closed.");
             if (StateChanged is not null)
                 await StateChanged.Invoke(HubConnectionState.Disconnected);
-
-            // WithAutomaticReconnect stops after MaxReconnectAttempts; this
-            // manual fallback handles the case where automatic reconnect is exhausted.
             await AttemptManualReconnectAsync();
         };
-
-        await _connection.StartAsync(ct);
-        _reconnectAttempts = 0;
-
-        if (StateChanged is not null)
-            await StateChanged.Invoke(HubConnectionState.Connected);
     }
 
     /// <summary>
-    /// Registers a handler for a hub message. Must be called before <see cref="StartAsync"/>.
+    /// Registers a handler for a hub message. Can be called before or after StartAsync.
+    /// If called before StartAsync, the connection object is built lazily.
     /// </summary>
     public IDisposable On<T>(string methodName, Action<T> handler)
     {
-        if (_connection is null)
-            throw new InvalidOperationException("Call StartAsync before registering handlers.");
-        return _connection.On(methodName, handler);
+        EnsureConnectionBuilt();
+        return _connection!.On(methodName, handler);
     }
 
     /// <summary>

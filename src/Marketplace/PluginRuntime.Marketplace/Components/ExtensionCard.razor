@@ -1,0 +1,29 @@
+@using PluginRuntime.Marketplace.Models
+
+<MudCard Elevation="2" Class="cursor-pointer" @onclick="NavigateToDetail">
+    <MudCardContent>
+        <MudText Typo="Typo.h6">@Extension.Name</MudText>
+        <MudText Typo="Typo.caption" Class="mb-1">by @Extension.Author</MudText>
+        <div class="d-flex align-center gap-2 mb-2">
+            <MudChip T="string" Size="Size.Small" Color="GetRiskColor(Extension.RiskLevel)">@Extension.RiskLevel</MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@Extension.Category</MudChip>
+            <MudText Typo="Typo.caption">v@Extension.LatestVersion</MudText>
+        </div>
+        <MudText Typo="Typo.body2">@Extension.ShortDescription</MudText>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired] public ExtensionSummaryDto Extension { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private void NavigateToDetail() => Navigation.NavigateTo($"/extensions/{Extension.ExtensionId}");
+
+    private static Color GetRiskColor(string riskLevel) => riskLevel switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Success
+    };
+}

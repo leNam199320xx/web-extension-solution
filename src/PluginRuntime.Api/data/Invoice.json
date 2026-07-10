@@ -1,0 +1,54 @@
+[
+  {
+    "InvoiceId": "f6a7b8c9-0001-0001-0001-000000000001",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "BillingPeriodStart": "2024-06-01",
+    "BillingPeriodEnd": "2024-06-30",
+    "BaseAmount": 49.00,
+    "OverageAmount": 12.50,
+    "PackageAmount": 49.98,
+    "TotalAmount": 111.48,
+    "Status": "Paid",
+    "StripeInvoiceId": "inv_acme_june",
+    "CreatedAt": "2024-07-01T00:00:00Z"
+  },
+  {
+    "InvoiceId": "f6a7b8c9-0001-0001-0001-000000000002",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "BillingPeriodStart": "2024-05-01",
+    "BillingPeriodEnd": "2024-05-31",
+    "BaseAmount": 49.00,
+    "OverageAmount": 0.00,
+    "PackageAmount": 19.99,
+    "TotalAmount": 68.99,
+    "Status": "Paid",
+    "StripeInvoiceId": "inv_acme_may",
+    "CreatedAt": "2024-06-01T00:00:00Z"
+  },
+  {
+    "InvoiceId": "f6a7b8c9-0001-0001-0001-000000000003",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "BillingPeriodStart": "2024-06-01",
+    "BillingPeriodEnd": "2024-06-30",
+    "BaseAmount": 299.00,
+    "OverageAmount": 0.00,
+    "PackageAmount": 19.99,
+    "TotalAmount": 318.99,
+    "Status": "Paid",
+    "StripeInvoiceId": "inv_ent_june",
+    "CreatedAt": "2024-07-01T00:00:00Z"
+  },
+  {
+    "InvoiceId": "f6a7b8c9-0001-0001-0001-000000000004",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000005",
+    "BillingPeriodStart": "2024-05-01",
+    "BillingPeriodEnd": "2024-05-31",
+    "BaseAmount": 49.00,
+    "OverageAmount": 25.00,
+    "PackageAmount": 0.00,
+    "TotalAmount": 74.00,
+    "Status": "Failed",
+    "StripeInvoiceId": "inv_suspended_may",
+    "CreatedAt": "2024-06-01T00:00:00Z"
+  }
+]

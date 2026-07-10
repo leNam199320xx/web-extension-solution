@@ -1,0 +1,46 @@
+[
+  {
+    "SubscriptionId": "e5f6a7b8-0001-0001-0001-000000000001",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000001",
+    "Status": "Active",
+    "StripeSubscriptionItemId": "si_acme_analytics",
+    "StartDate": "2024-04-01T00:00:00Z",
+    "EndDate": null,
+    "CreatedAt": "2024-04-01T00:00:00Z",
+    "UpdatedAt": "2024-04-01T00:00:00Z"
+  },
+  {
+    "SubscriptionId": "e5f6a7b8-0001-0001-0001-000000000002",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000002",
+    "Status": "Active",
+    "StripeSubscriptionItemId": "si_acme_security",
+    "StartDate": "2024-05-01T00:00:00Z",
+    "EndDate": null,
+    "CreatedAt": "2024-05-01T00:00:00Z",
+    "UpdatedAt": "2024-05-01T00:00:00Z"
+  },
+  {
+    "SubscriptionId": "e5f6a7b8-0001-0001-0001-000000000003",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000001",
+    "Status": "Active",
+    "StripeSubscriptionItemId": "si_ent_analytics",
+    "StartDate": "2024-03-01T00:00:00Z",
+    "EndDate": null,
+    "CreatedAt": "2024-03-01T00:00:00Z",
+    "UpdatedAt": "2024-03-01T00:00:00Z"
+  },
+  {
+    "SubscriptionId": "e5f6a7b8-0001-0001-0001-000000000004",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000003",
+    "Status": "Cancelled",
+    "StripeSubscriptionItemId": "si_ent_devtools",
+    "StartDate": "2024-02-15T00:00:00Z",
+    "EndDate": "2024-06-15T00:00:00Z",
+    "CreatedAt": "2024-02-15T00:00:00Z",
+    "UpdatedAt": "2024-06-15T00:00:00Z"
+  }
+]

@@ -1,0 +1,43 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6">API Consumer Portal</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Class="mr-2">@context.User.Identity?.Name</MudText>
+                <MudButton Href="authentication/logout" Color="Color.Inherit" Size="Size.Small">Logout</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Href="authentication/login" Color="Color.Inherit">Login</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2">
+        <MudNavMenu>
+            <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="/api-keys" Icon="@Icons.Material.Filled.Key">API Keys</MudNavLink>
+            <MudNavLink Href="/usage" Icon="@Icons.Material.Filled.Analytics">Usage Analytics</MudNavLink>
+            <MudNavLink Href="/plans" Icon="@Icons.Material.Filled.Upgrade">Plans</MudNavLink>
+            <MudNavLink Href="/billing" Icon="@Icons.Material.Filled.Receipt">Billing</MudNavLink>
+            <MudNavLink Href="/docs" Icon="@Icons.Material.Filled.MenuBook">Documentation</MudNavLink>
+            <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
+            <MudNavLink Href="/support" Icon="@Icons.Material.Filled.Support">Support</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+    <MudMainContent Class="pa-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

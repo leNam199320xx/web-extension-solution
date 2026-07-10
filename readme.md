@@ -1,193 +1,106 @@
-# 🚀 Metadata-Driven Secure Plugin Runtime (.NET 10)
+# Plugin Runtime Platform
 
----
+A secure, metadata-driven plugin runtime system that enables dynamic loading and execution of plugins at runtime — governed by signed manifests and capability-based access control.
 
-# 🧠 SYSTEM OVERVIEW
+## What It Does
 
-This repository implements a:
+This platform allows organizations to safely run untrusted plugin code in isolated environments. Every plugin must pass cryptographic verification before execution, and can only access resources explicitly declared in its manifest.
 
-> **Zero-Trust, Metadata-Driven Plugin Runtime System**
-
-A production-grade runtime where:
-- Plugins are dynamically loaded at runtime
-- All execution is governed by Signed Manifests
-- Security is enforced via Capability-Based Access Control
-- Core system remains stateless and untrusted-code safe
-
----
-
-# ⚡ CORE PRINCIPLE
-
-> Plugins are NEVER trusted.  
-> Everything must be validated, signed, and constrained.
-
----
-
-# 🧭 HOW THE SYSTEM WORKS
+## System Components
 
 ```
-Developer Uploads Plugin
-        ↓
-Security Validation (SAST + Scan)
-        ↓
-Approval + Signing (HSM / KMS)
-        ↓
-Store in Plugin Repository
-        ↓
-Runtime Request Received
-        ↓
-Manifest Validation + Signature Check
-        ↓
-Capability Resolution
-        ↓
-Plugin Execution (Isolated Runtime)
-        ↓
-Observability + Logging
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Plugin Runtime Platform                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌──────────────────┐   ┌──────────────────┐   ┌────────────────┐  │
+│  │ Marketplace      │   │ Consumer Portal  │   │ Admin Portal   │  │
+│  │ Portal           │   │                  │   │                │  │
+│  └────────┬─────────┘   └────────┬─────────┘   └───────┬────────┘  │
+│           │                      │                      │           │
+│           └──────────────────────┼──────────────────────┘           │
+│                                  │                                   │
+│                    ┌─────────────▼─────────────┐                    │
+│                    │   Public API Gateway       │                    │
+│                    └─────────────┬─────────────┘                    │
+│                                  │                                   │
+│                    ┌─────────────▼─────────────┐                    │
+│                    │   Unified API (Backend)    │                    │
+│                    └───────────────────────────┘                    │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## Projects
 
-# 🧱 SYSTEM ARCHITECTURE
+| # | Project | Description |
+|---|---------|-------------|
+| 1 | **Unified API** | The core backend. Manages tenants, billing, subscriptions, plugin packages, and gateway synchronization. All business logic lives here. |
+| 2 | **Public API Gateway** | The public entry point for API consumers. Authenticates requests via API keys, enforces rate limits and daily quotas, meters usage, and forwards requests to the backend. |
+| 3 | **Plugin Runtime Engine** | The execution engine. Loads plugin DLLs into isolated sandboxes, verifies signatures, resolves capabilities, and executes plugins safely. |
+| 4 | **Marketplace Portal** | A web frontend for plugin developers. Browse, search, upload, and manage extensions. Review permissions and subscribe to other extensions. |
+| 5 | **Consumer Portal** | A web frontend for API consumers. View usage analytics, manage API keys, handle billing, change plans, and access documentation. |
+| 6 | **Admin Portal** | An internal management interface for platform operators. Approve plugins, manage tenants, review security scans, and monitor the system. |
+
+## Key Features
+
+**For Plugin Developers**
+- Upload and publish plugins through the Marketplace
+- Declare capabilities and permissions in a manifest
+- Subscribe to other extensions for inter-plugin communication
+- Track plugin usage and subscriber counts
+
+**For API Consumers**
+- Self-service registration with plan selection (Free / Pro / Enterprise)
+- API key management with rotation and expiration
+- Real-time usage analytics with charts
+- Automated billing with Stripe integration
+
+**For Platform Operators**
+- Zero-trust security model — every plugin is untrusted until verified
+- Cryptographic signature verification before execution
+- Capability-based access control — plugins can only use declared resources
+- Multi-tenant isolation with per-tenant rate limits and quotas
+- Full audit trail of all administrative actions
+
+**Infrastructure**
+- Multi-database support: PostgreSQL, SQLite, or JSON files
+- Redis for caching, rate limiting, and real-time notifications
+- OpenTelemetry for distributed tracing and metrics
+- .NET Aspire orchestration for one-command startup
+
+## Getting Started
+
+```bash
+# Run the entire platform with Aspire (requires Docker)
+cd src/Aspire/PluginRuntime.AppHost
+dotnet run
+
+# Or run individual projects
+cd src/PluginRuntime.Api
+dotnet run
+
+cd src/PublicApiGateway
+dotnet run
+```
+
+## Project Structure
 
 ```
-/docs        → System architecture + security model
-/ai          → AI behavior control layer
-/.github     → Copilot execution rules
-/src         → .NET runtime engine
+src/
+├── Aspire/                    → Orchestration (runs everything together)
+├── PluginRuntime.Api/         → Unified backend API (modular monolith)
+├── PublicApiGateway/          → Public-facing API gateway
+├── Core/                      → Plugin runtime engine
+├── Marketplace/               → Developer marketplace (web frontend)
+├── ConsumerPortal/            → API consumer portal (web frontend)
+├── Admin/                     → Admin management portal
+├── SDK/                       → Plugin development SDK
+├── Capabilities/              → Infrastructure access layers for plugins
+├── Infrastructure/            → Database and external service integrations
+└── Tests/                     → All test projects
 ```
 
----
+## License
 
-# 🔐 SECURITY MODEL (ZERO TRUST)
-
-- Every plugin is untrusted by default
-- Execution requires signed manifest
-- All access must go through capability layer
-- Any validation failure = immediate rejection
-
-👉 Security is enforced at every layer:
-- Manifest validation
-- Signature verification
-- Capability enforcement
-- Runtime isolation
-
----
-
-# 🔑 CAPABILITY SYSTEM
-
-Plugins cannot access infrastructure directly.
-
-Instead, they must use:
-
-- DatabaseCapability
-- NetworkCapability
-- StorageCapability
-- CacheCapability
-
-👉 All capabilities are explicitly granted via manifest.
-
----
-
-# 📄 SIGNED MANIFEST
-
-Each plugin is governed by a signed contract:
-
-- Plugin identity
-- SHA-256 hash
-- Permissions
-- Capabilities
-- Execution limits
-- Digital signature
-
-👉 No valid manifest = no execution
-
----
-
-# 🔄 RUNTIME MODEL
-
-- Stateless Core Engine
-- Plugin isolation via AssemblyLoadContext
-- Timeout + resource enforcement
-- Fail-closed execution model
-
----
-
-# 📊 OBSERVABILITY
-
-Every execution is tracked:
-
-- TraceId
-- PluginId
-- Execution time
-- Status (Success / Failure / Timeout)
-- Security events
-
----
-
-# 🧠 AI-NATIVE DESIGN
-
-This repository is optimized for AI-assisted development:
-
-### AI Layers:
-- `/ai` → AI behavior rules
-- `.github` → Copilot execution constraints
-
-### System Intelligence:
-- INDEX files define navigation layers
-- Docs are structured for AI reasoning
-- Architecture is modular and deterministic
-
----
-
-# 📚 DOCUMENTATION ENTRY POINT
-
-👉 Start here:
-
-- `PROJECT-INDEX.md` → system-wide navigation map
-- `docs/INDEX.md` → architecture & design flow
-- `ai/INDEX.md` → AI behavior rules
-
----
-
-# 🚀 CORE VALUE
-
-This system enables:
-
-- Hot-pluggable API architecture
-- Secure execution of untrusted code
-- Enterprise-grade zero-trust enforcement
-- Scalable plugin ecosystem
-
----
-
-# ⚠️ IMPORTANT RULE
-
-If any contradiction exists:
-
-> `security-model.md` always takes precedence
-
----
-
-# 🏁 SUMMARY
-
-This is not just an API system.
-
-It is a:
-
-> 🔐 Secure Execution Runtime for Untrusted Plugins
-
-Built for:
-- scalability
-- security
-- dynamic extensibility
-- AI-assisted development
-
----
-
-# 📌 NEXT STEPS
-
-- Explore `/docs` for architecture details
-- Check `/ai` for development rules
-- Use `.github/copilot-instructions.md` for AI behavior control
-
----
+Proprietary. All rights reserved.

@@ -1,0 +1,52 @@
+[
+  {
+    "SubscriptionId": "a1b2c3d4-sub1-0001-0001-000000000001",
+    "RequesterId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "RequesterName": "Acme Corp",
+    "TargetExtensionId": "f1a2b3c4-0001-0001-0001-000000000005",
+    "TargetExtensionName": "Rate Limiter",
+    "Status": "Approved",
+    "RequestedAt": "2024-04-15T10:00:00Z",
+    "DecidedAt": "2024-04-16T09:00:00Z",
+    "Reason": "Need rate limiting for our multi-tenant API gateway integration",
+    "ExpectedUsage": { "requestsPerDay": 500, "usagePattern": "Continuous throughout business hours" }
+  },
+  {
+    "SubscriptionId": "a1b2c3d4-sub1-0001-0001-000000000002",
+    "RequesterId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "RequesterName": "Acme Corp",
+    "TargetExtensionId": "f1a2b3c4-0001-0001-0001-000000000008",
+    "TargetExtensionName": "Crypto Signer",
+    "Status": "Pending",
+    "RequestedAt": "2024-07-01T14:00:00Z",
+    "DecidedAt": null,
+    "Reason": "Require document signing for compliance workflow",
+    "ExpectedUsage": { "requestsPerDay": 100, "usagePattern": "Batch processing twice daily" }
+  },
+  {
+    "SubscriptionId": "a1b2c3d4-sub1-0001-0001-000000000003",
+    "RequesterId": "b2c3d4e5-0001-0001-0001-000000000002",
+    "RequesterName": "Startup Labs",
+    "TargetExtensionId": "f1a2b3c4-0001-0001-0001-000000000005",
+    "TargetExtensionName": "Rate Limiter",
+    "Status": "Rejected",
+    "RequestedAt": "2024-05-20T11:00:00Z",
+    "DecidedAt": "2024-05-21T08:30:00Z",
+    "Reason": "Want to add rate limiting to our free tier users",
+    "ExpectedUsage": { "requestsPerDay": 1000, "usagePattern": "Constant load" },
+    "RejectionReason": "Usage pattern exceeds our capacity for free-tier tenants. Please upgrade to Pro plan first."
+  },
+  {
+    "SubscriptionId": "a1b2c3d4-sub1-0001-0001-000000000004",
+    "RequesterId": "b2c3d4e5-0001-0001-0001-000000000003",
+    "RequesterName": "Enterprise Global",
+    "TargetExtensionId": "f1a2b3c4-0001-0001-0001-000000000008",
+    "TargetExtensionName": "Crypto Signer",
+    "Status": "Approved",
+    "RequestedAt": "2024-03-10T09:00:00Z",
+    "DecidedAt": "2024-03-10T10:00:00Z",
+    "Reason": "Enterprise compliance requirement for document signing",
+    "ExpectedUsage": { "requestsPerDay": 2000, "usagePattern": "High volume throughout day" },
+    "ExpiresAt": "2025-03-10T00:00:00Z"
+  }
+]

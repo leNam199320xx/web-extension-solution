@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PluginRuntime.Api.Modules.Billing.Domain;
+using PluginRuntime.Api.Modules.Gateway.Domain;
 using PluginRuntime.Api.Modules.Subscriptions.Domain;
 using PluginRuntime.Api.Modules.Tenants.Domain;
 using PluginRuntime.Api.Shared.Entities;
@@ -21,6 +22,9 @@ public sealed class AppDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<UsageAggregate> UsageAggregates => Set<UsageAggregate>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
+    public DbSet<PluginAccess> PluginAccessEntries => Set<PluginAccess>();
+    public DbSet<FailedNotification> FailedNotifications => Set<FailedNotification>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)

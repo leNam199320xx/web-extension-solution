@@ -68,8 +68,8 @@ public sealed class PluginPackagesController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Lists active plugin packages with pagination (public route for subscriptions).</summary>
-    [HttpGet("api/subscriptions/packages")]
+    /// <summary>Lists active plugin packages with pagination (public route for catalog browsing).</summary>
+    [HttpGet("api/packages")]
     [ProducesResponseType(typeof(PagedResult<PluginPackageDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListActive(
         [FromQuery] int page = 1,

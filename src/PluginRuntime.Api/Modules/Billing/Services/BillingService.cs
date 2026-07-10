@@ -1,37 +1,35 @@
-using Microsoft.EntityFrameworkCore;
-using PluginRuntime.Api.Shared.Infrastructure;
+using PluginRuntime.Api.Shared.Entities;
+using PluginRuntime.Api.Shared.Interfaces;
 
 namespace PluginRuntime.Api.Modules.Billing.Services;
 
 /// <summary>
-/// Orchestrates billing operations: creates Stripe customers via IStripeService
-/// and persists the association on the tenant record.
+/// Orchestrates billing operations using IRepository for provider-agnostic persistence.
 /// </summary>
 public sealed class BillingService : IBillingService
 {
-    private readonly AppDbContext _db;
+    private readonly IRepository<Tenant> _tenants;
     private readonly IStripeService _stripeService;
     private readonly ILogger<BillingService> _logger;
 
-    public BillingService(AppDbContext db, IStripeService stripeService, ILogger<BillingService> logger)
+    public BillingService(IRepository<Tenant> tenants, IStripeService stripeService, ILogger<BillingService> logger)
     {
-        _db = db;
+        _tenants = tenants;
         _stripeService = stripeService;
         _logger = logger;
     }
 
-    /// <inheritdoc />
     public async Task CreateStripeCustomerAsync(Guid tenantId, string email, string name, CancellationToken ct)
     {
         var stripeCustomerId = await _stripeService.CreateCustomerAsync(email, name, ct);
 
-        var tenant = await _db.Tenants.FirstAsync(t => t.TenantId == tenantId, ct);
+        var tenant = await _tenants.GetByIdAsync(tenantId, ct)
+            ?? throw new InvalidOperationException($"Tenant '{tenantId}' not found.");
+
         tenant.SetStripeCustomerId(stripeCustomerId);
+        await _tenants.UpdateAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
-        await _db.SaveChangesAsync(ct);
-
-        _logger.LogInformation(
-            "Associated Stripe customer {StripeCustomerId} with tenant {TenantId}",
-            stripeCustomerId, tenantId);
+        _logger.LogInformation("Associated Stripe customer {StripeCustomerId} with tenant {TenantId}", stripeCustomerId, tenantId);
     }
 }

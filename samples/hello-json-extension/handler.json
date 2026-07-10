@@ -1,0 +1,25 @@
+{
+  "$comment": "JSON Template Handler — defines input/output transformation without code",
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "default": "World" },
+      "language": { "type": "string", "enum": ["en", "vi", "ja"], "default": "en" }
+    }
+  },
+
+  "greetings": {
+    "en": "Hello, {{name}}! Welcome to Plugin Runtime.",
+    "vi": "Xin chào, {{name}}! Chào mừng đến với Plugin Runtime.",
+    "ja": "こんにちは、{{name}}！Plugin Runtimeへようこそ。"
+  },
+
+  "output_template": {
+    "message": "{{greeting}}",
+    "language": "{{input.language}}",
+    "extension": "com.samples.hello-json",
+    "version": "1.0.0",
+    "processed_at": "{{now_utc}}"
+  }
+}

@@ -1,0 +1,80 @@
+@page "/login"
+@page "/authentication/{Action}"
+@inject ApiAuthStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Login</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-6" Elevation="3">
+        <MudText Typo="Typo.h5" Class="mb-4">Login to Marketplace</MudText>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+        }
+
+        <MudTextField @bind-Value="_email" Label="Email" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-4" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="DoLogin" Disabled="_loading" Class="mb-3">
+            @if (_loading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Login
+        </MudButton>
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Quick Login (Test Accounts):</MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true" Class="mb-2"
+                   OnClick="@(() => QuickLogin("alice@acme.com", "secret"))">
+            Alice (Pro Tenant)
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true" Class="mb-2"
+                   OnClick="@(() => QuickLogin("bob@startuplabs.io", "secret"))">
+            Bob (Free Tenant)
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true"
+                   OnClick="@(() => QuickLogin("admin@pluginruntime.internal", "admin"))">
+            Admin User
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter] public string? Action { get; set; }
+
+    private string _email = "";
+    private string _password = "";
+    private string? _error;
+    private bool _loading;
+
+    private async Task DoLogin()
+    {
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "Email and password are required.";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+
+        var error = await AuthProvider.LoginAsync(_email, _password);
+        _loading = false;
+
+        if (error is not null)
+        {
+            _error = "Invalid email or password.";
+            return;
+        }
+
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task QuickLogin(string email, string password)
+    {
+        _email = email;
+        _password = password;
+        await DoLogin();
+    }
+}

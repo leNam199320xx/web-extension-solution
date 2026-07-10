@@ -1,0 +1,21 @@
+{
+  "extension_id": "com.samples.hello-json",
+  "version": "1.0.0",
+  "name": "Hello JSON Extension",
+  "description": "A declarative extension defined entirely in JSON. No compiled code needed. Uses the platform's built-in JSON processor to transform input into output based on a template.",
+  "author": "Plugin Runtime Team",
+  "entry_point": "__json_processor__",
+  "entry_class": null,
+  "capabilities": [],
+  "permissions": [],
+  "visibility": "public",
+  "resource_limits": {
+    "max_memory_mb": 32,
+    "max_execution_seconds": 2,
+    "max_cpu_percent": 5
+  },
+  "processor": {
+    "type": "json_template",
+    "config": "handler.json"
+  }
+}

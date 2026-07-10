@@ -1,10 +1,8 @@
-using Microsoft.EntityFrameworkCore;
 using PluginRuntime.Api.Modules.Tenants.DTOs;
 using PluginRuntime.Api.Shared.DTOs;
 using PluginRuntime.Api.Shared.Entities;
 using PluginRuntime.Api.Shared.Events;
 using PluginRuntime.Api.Shared.Exceptions;
-using PluginRuntime.Api.Shared.Infrastructure;
 using PluginRuntime.Api.Shared.Interfaces;
 using PluginRuntime.Api.Shared.ValueObjects;
 
@@ -12,16 +10,23 @@ namespace PluginRuntime.Api.Modules.Tenants.Services;
 
 /// <summary>
 /// Implements tenant registration, lifecycle management, and listing.
+/// Uses IRepository for provider-agnostic persistence (PostgreSQL, SQLite, or JSON).
 /// </summary>
 public sealed class TenantService : ITenantService
 {
-    private readonly AppDbContext _db;
+    private readonly IRepository<Tenant> _tenants;
+    private readonly IRepository<Plan> _plans;
     private readonly IDomainEventDispatcher _eventDispatcher;
     private readonly IAuditService _auditService;
 
-    public TenantService(AppDbContext db, IDomainEventDispatcher eventDispatcher, IAuditService auditService)
+    public TenantService(
+        IRepository<Tenant> tenants,
+        IRepository<Plan> plans,
+        IDomainEventDispatcher eventDispatcher,
+        IAuditService auditService)
     {
-        _db = db;
+        _tenants = tenants;
+        _plans = plans;
         _eventDispatcher = eventDispatcher;
         _auditService = auditService;
     }
@@ -30,14 +35,12 @@ public sealed class TenantService : ITenantService
     {
         var email = new Email(request.ContactEmail);
 
-        var duplicateExists = await _db.Tenants
-            .AnyAsync(t => t.ContactEmail == email, ct);
-
-        if (duplicateExists)
+        var duplicates = await _tenants.FindAsync(t => t.ContactEmail == email, ct);
+        if (duplicates.Count > 0)
             throw new DomainException($"A tenant with email '{email.Value}' already exists.");
 
-        var freePlan = await _db.Plans
-            .FirstOrDefaultAsync(p => p.Type == PlanType.Free, ct)
+        var plans = await _plans.FindAsync(p => p.Type == PlanType.Free, ct);
+        var freePlan = plans.FirstOrDefault()
             ?? throw new DomainException("Free plan not found. Platform configuration error.");
 
         var tenant = new Tenant(
@@ -48,8 +51,8 @@ public sealed class TenantService : ITenantService
             companyName: request.CompanyName,
             isInternal: false);
 
-        _db.Tenants.Add(tenant);
-        await _db.SaveChangesAsync(ct);
+        await _tenants.AddAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
         await _eventDispatcher.DispatchAsync(new TenantCreated(
             EventId: Guid.NewGuid(),
@@ -66,14 +69,12 @@ public sealed class TenantService : ITenantService
     {
         var email = new Email(request.ContactEmail);
 
-        var duplicateExists = await _db.Tenants
-            .AnyAsync(t => t.ContactEmail == email, ct);
-
-        if (duplicateExists)
+        var duplicates = await _tenants.FindAsync(t => t.ContactEmail == email, ct);
+        if (duplicates.Count > 0)
             throw new DomainException($"A tenant with email '{email.Value}' already exists.");
 
-        var internalPlan = await _db.Plans
-            .FirstOrDefaultAsync(p => p.Type == PlanType.Internal, ct)
+        var plans = await _plans.FindAsync(p => p.Type == PlanType.Internal, ct);
+        var internalPlan = plans.FirstOrDefault()
             ?? throw new DomainException("Internal plan not found. Platform configuration error.");
 
         var tenant = new Tenant(
@@ -84,8 +85,8 @@ public sealed class TenantService : ITenantService
             companyName: request.CompanyName,
             isInternal: true);
 
-        _db.Tenants.Add(tenant);
-        await _db.SaveChangesAsync(ct);
+        await _tenants.AddAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
         await _eventDispatcher.DispatchAsync(new TenantCreated(
             EventId: Guid.NewGuid(),
@@ -104,26 +105,14 @@ public sealed class TenantService : ITenantService
         var previousStatus = tenant.Status.ToString();
 
         tenant.Suspend();
-        await _db.SaveChangesAsync(ct);
+        await _tenants.UpdateAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
-        await _auditService.LogAsync(
-            tenantId,
-            actorId,
-            "Suspend",
-            "Tenant",
-            previousStatus,
-            tenant.Status.ToString(),
-            reason,
-            ct);
+        await _auditService.LogAsync(tenantId, actorId, "Suspend", "Tenant", previousStatus, tenant.Status.ToString(), reason, ct);
 
         await _eventDispatcher.DispatchAsync(new TenantStatusChanged(
-            EventId: Guid.NewGuid(),
-            OccurredAt: DateTime.UtcNow,
-            TenantId: tenant.TenantId,
-            PreviousStatus: previousStatus,
-            NewStatus: tenant.Status.ToString(),
-            ActorId: actorId,
-            Reason: reason), ct);
+            EventId: Guid.NewGuid(), OccurredAt: DateTime.UtcNow, TenantId: tenant.TenantId,
+            PreviousStatus: previousStatus, NewStatus: tenant.Status.ToString(), ActorId: actorId, Reason: reason), ct);
     }
 
     public async Task ReactivateAsync(Guid tenantId, string actorId, string reason, CancellationToken ct)
@@ -132,26 +121,14 @@ public sealed class TenantService : ITenantService
         var previousStatus = tenant.Status.ToString();
 
         tenant.Reactivate();
-        await _db.SaveChangesAsync(ct);
+        await _tenants.UpdateAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
-        await _auditService.LogAsync(
-            tenantId,
-            actorId,
-            "Reactivate",
-            "Tenant",
-            previousStatus,
-            tenant.Status.ToString(),
-            reason,
-            ct);
+        await _auditService.LogAsync(tenantId, actorId, "Reactivate", "Tenant", previousStatus, tenant.Status.ToString(), reason, ct);
 
         await _eventDispatcher.DispatchAsync(new TenantStatusChanged(
-            EventId: Guid.NewGuid(),
-            OccurredAt: DateTime.UtcNow,
-            TenantId: tenant.TenantId,
-            PreviousStatus: previousStatus,
-            NewStatus: tenant.Status.ToString(),
-            ActorId: actorId,
-            Reason: reason), ct);
+            EventId: Guid.NewGuid(), OccurredAt: DateTime.UtcNow, TenantId: tenant.TenantId,
+            PreviousStatus: previousStatus, NewStatus: tenant.Status.ToString(), ActorId: actorId, Reason: reason), ct);
     }
 
     public async Task DeleteAsync(Guid tenantId, string actorId, string reason, CancellationToken ct)
@@ -160,34 +137,19 @@ public sealed class TenantService : ITenantService
         var previousStatus = tenant.Status.ToString();
 
         tenant.Delete();
-        await _db.SaveChangesAsync(ct);
+        await _tenants.UpdateAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
-        await _auditService.LogAsync(
-            tenantId,
-            actorId,
-            "Delete",
-            "Tenant",
-            previousStatus,
-            tenant.Status.ToString(),
-            reason,
-            ct);
+        await _auditService.LogAsync(tenantId, actorId, "Delete", "Tenant", previousStatus, tenant.Status.ToString(), reason, ct);
 
         await _eventDispatcher.DispatchAsync(new TenantStatusChanged(
-            EventId: Guid.NewGuid(),
-            OccurredAt: DateTime.UtcNow,
-            TenantId: tenant.TenantId,
-            PreviousStatus: previousStatus,
-            NewStatus: tenant.Status.ToString(),
-            ActorId: actorId,
-            Reason: reason), ct);
+            EventId: Guid.NewGuid(), OccurredAt: DateTime.UtcNow, TenantId: tenant.TenantId,
+            PreviousStatus: previousStatus, NewStatus: tenant.Status.ToString(), ActorId: actorId, Reason: reason), ct);
     }
 
     public async Task<TenantDto?> GetByIdAsync(Guid tenantId, CancellationToken ct)
     {
-        var tenant = await _db.Tenants
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.TenantId == tenantId, ct);
-
+        var tenant = await _tenants.GetByIdAsync(tenantId, ct);
         return tenant is null ? null : TenantDto.FromEntity(tenant);
     }
 
@@ -195,25 +157,23 @@ public sealed class TenantService : ITenantService
     {
         var normalized = paging.Normalize();
 
-        var query = _db.Tenants.AsNoTracking().AsQueryable();
+        var query = _tenants.Query();
 
         if (filter.Status.HasValue)
             query = query.Where(t => t.Status == filter.Status.Value);
-
         if (filter.PlanId.HasValue)
             query = query.Where(t => t.PlanId == filter.PlanId.Value);
-
         if (filter.IsInternal.HasValue)
             query = query.Where(t => t.IsInternal == filter.IsInternal.Value);
 
-        var totalCount = await query.CountAsync(ct);
-
-        var items = await query
+        var totalCount = query.Count();
+        var items = query
             .OrderBy(t => t.CreatedAt)
             .Skip(normalized.Skip)
             .Take(normalized.Take)
-            .Select(t => TenantDto.FromEntity(t))
-            .ToListAsync(ct);
+            .ToList()
+            .Select(TenantDto.FromEntity)
+            .ToList();
 
         return new PagedResult<TenantDto>
         {
@@ -226,9 +186,7 @@ public sealed class TenantService : ITenantService
 
     private async Task<Tenant> LoadTenantAsync(Guid tenantId, CancellationToken ct)
     {
-        var tenant = await _db.Tenants
-            .FirstOrDefaultAsync(t => t.TenantId == tenantId, ct);
-
+        var tenant = await _tenants.GetByIdAsync(tenantId, ct);
         return tenant ?? throw new DomainException($"Tenant with ID '{tenantId}' not found.");
     }
 }

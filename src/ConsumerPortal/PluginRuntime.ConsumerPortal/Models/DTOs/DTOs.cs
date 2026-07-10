@@ -1,0 +1,21 @@
+namespace PluginRuntime.ConsumerPortal.Models.DTOs;
+
+public sealed record TenantDto(Guid TenantId, string Name, string ContactEmail, string? CompanyName, string PlanName, string Status, DateTime CreatedAt);
+public sealed record PlanDto(Guid PlanId, string Name, int? RateLimit, int? DailyQuota, int? MaxApiKeys, decimal MonthlyPrice, decimal? OverageRatePer1k, string? Features);
+public sealed record ApiKeyListDto(List<ApiKeyItemDto> Keys, int TotalCount);
+public sealed record ApiKeyItemDto(Guid KeyId, string? Name, string Prefix, string Suffix, string Status, DateTime CreatedAt, DateTime? ExpiresAt, DateTime? LastUsedAt);
+public sealed record ApiKeyGenerationResult(Guid KeyId, string PlaintextKey, string Prefix, DateTime CreatedAt);
+public sealed record UsageAggregateDto(DateOnly Date, long TotalRequests, long SuccessfulRequests, long FailedRequests, double AvgDurationMs);
+public sealed record UsageSummaryDto(long TotalRequests, double AvgDaily, long TotalSuccessful, long TotalFailed, double AvgResponseTimeMs);
+public sealed record DashboardUsageDto(string PlanName, int? RateLimit, int? DailyQuota, long TodayRequests, long TodaySuccessful, long TodayFailed, int ActiveKeyCount, int ExpiringKeyCount, List<RecentActivityDto> RecentActivity);
+public sealed record RecentActivityDto(DateOnly Date, long TotalRequests, double SuccessRate);
+public sealed record InvoiceDto(Guid InvoiceId, DateOnly PeriodStart, DateOnly PeriodEnd, decimal BaseAmount, decimal OverageAmount, decimal TotalAmount, string Status, DateTime CreatedAt);
+public sealed record InvoiceDetailDto(Guid InvoiceId, DateOnly PeriodStart, DateOnly PeriodEnd, decimal BaseAmount, decimal OverageAmount, decimal TotalAmount, string Status, List<DailyOverageDto> DailyBreakdown);
+public sealed record DailyOverageDto(DateOnly Date, long Requests, int Quota, long Overage, decimal Charge);
+public sealed record BillingSummaryDto(string CurrentPlan, decimal CurrentMonthCharges, DateOnly? NextInvoiceDate, string? PaymentMethodLast4);
+public sealed record PlanChangeResult(string Type, DateTime EffectiveAt);
+public sealed record TenantRegistrationResult(Guid TenantId, string Status);
+public sealed record SupportTicketResult(string TicketReference);
+public sealed record PaginatedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);
+public sealed record ApiErrorResponse(ApiError Error);
+public sealed record ApiError(string Code, string Message, string? TraceId);

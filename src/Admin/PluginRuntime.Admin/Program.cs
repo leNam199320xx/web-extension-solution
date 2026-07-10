@@ -13,10 +13,11 @@ builder.Services.AddSignalR();
 
 builder.Services.AddHttpClient<PluginRuntimeApiClient>(client =>
 {
-    var baseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:5001";
+    var baseUrl = builder.Configuration["Api:BaseUrl"] ?? "http://localhost:6100";
     client.BaseAddress = new Uri(baseUrl);
 });
 
+builder.Services.AddHttpClient("AuthClient");
 builder.Services.AddScoped<AuthTokenProvider>();
 
 // SignalR hub connection factory — scoped so each browser tab gets its own connection

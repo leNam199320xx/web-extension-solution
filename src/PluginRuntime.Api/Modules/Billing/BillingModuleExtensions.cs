@@ -15,10 +15,12 @@ public static class BillingModuleExtensions
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IWebhookService, WebhookService>();
         services.AddScoped<IDomainEventHandler<TenantCreated>, TenantCreatedHandler>();
 
         // Background services
         services.AddHostedService<InvoiceGenerationService>();
+        services.AddHostedService<UsageAggregationService>();
 
         return services;
     }

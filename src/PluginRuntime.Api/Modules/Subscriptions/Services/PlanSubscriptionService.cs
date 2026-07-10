@@ -1,54 +1,53 @@
-using Microsoft.EntityFrameworkCore;
 using PluginRuntime.Api.Modules.Billing.Services;
 using PluginRuntime.Api.Modules.Subscriptions.Domain;
 using PluginRuntime.Api.Modules.Subscriptions.DTOs;
 using PluginRuntime.Api.Shared.Entities;
 using PluginRuntime.Api.Shared.Events;
 using PluginRuntime.Api.Shared.Exceptions;
-using PluginRuntime.Api.Shared.Infrastructure;
 using PluginRuntime.Api.Shared.Interfaces;
 
 namespace PluginRuntime.Api.Modules.Subscriptions.Services;
 
 /// <summary>
-/// Manages plan subscription changes (upgrades/downgrades) for tenants.
-/// Upgrades apply immediately with Stripe proration.
-/// Downgrades are scheduled for the next billing period.
+/// Manages plan subscription changes using IRepository.
 /// </summary>
 public sealed class PlanSubscriptionService : IPlanSubscriptionService
 {
-    private readonly AppDbContext _db;
+    private readonly IRepository<Tenant> _tenants;
+    private readonly IRepository<Plan> _plans;
+    private readonly IRepository<ApiKey> _apiKeys;
+    private readonly IRepository<PackageSubscription> _packageSubs;
     private readonly IStripeService _stripeService;
     private readonly IDomainEventDispatcher _eventDispatcher;
     private readonly ILogger<PlanSubscriptionService> _logger;
 
     public PlanSubscriptionService(
-        AppDbContext db,
+        IRepository<Tenant> tenants,
+        IRepository<Plan> plans,
+        IRepository<ApiKey> apiKeys,
+        IRepository<PackageSubscription> packageSubs,
         IStripeService stripeService,
         IDomainEventDispatcher eventDispatcher,
         ILogger<PlanSubscriptionService> logger)
     {
-        _db = db;
+        _tenants = tenants;
+        _plans = plans;
+        _apiKeys = apiKeys;
+        _packageSubs = packageSubs;
         _stripeService = stripeService;
         _eventDispatcher = eventDispatcher;
         _logger = logger;
     }
 
-    /// <inheritdoc />
     public async Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, PlanChangeRequest request, CancellationToken ct)
     {
-        var tenant = await _db.Tenants
-            .FirstOrDefaultAsync(t => t.TenantId == tenantId, ct)
+        var tenant = await _tenants.GetByIdAsync(tenantId, ct)
             ?? throw new DomainException($"Tenant with ID '{tenantId}' not found.");
 
-        var currentPlan = await _db.Plans
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PlanId == tenant.PlanId, ct)
-            ?? throw new DomainException("Current plan not found. Platform configuration error.");
+        var currentPlan = await _plans.GetByIdAsync(tenant.PlanId, ct)
+            ?? throw new DomainException("Current plan not found.");
 
-        var newPlan = await _db.Plans
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PlanId == request.NewPlanId, ct)
+        var newPlan = await _plans.GetByIdAsync(request.NewPlanId, ct)
             ?? throw new DomainException($"Plan with ID '{request.NewPlanId}' not found.");
 
         if (newPlan.PlanId == currentPlan.PlanId)
@@ -58,140 +57,76 @@ public sealed class PlanSubscriptionService : IPlanSubscriptionService
 
         if (newPlan.MonthlyPrice > currentPlan.MonthlyPrice)
         {
-            // UPGRADE: apply immediately with proration
             result = await HandleUpgradeAsync(tenant, currentPlan, newPlan, ct);
         }
         else
         {
-            // DOWNGRADE: schedule for next billing period
             await ValidateDowngradeLimitsAsync(tenantId, newPlan, ct);
-            result = await HandleDowngradeAsync(tenant, currentPlan, newPlan, ct);
+            result = await HandleDowngradeAsync(tenant, newPlan, ct);
         }
 
-        await _db.SaveChangesAsync(ct);
+        await _tenants.UpdateAsync(tenant, ct);
+        await _tenants.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Plan change {Type} for tenant {TenantId}: {OldPlan} → {NewPlan}, effective {EffectiveAt}",
-            result.Type, tenantId, currentPlan.Name, newPlan.Name, result.EffectiveAt);
+        _logger.LogInformation("Plan change {Type} for tenant {TenantId}: effective {EffectiveAt}",
+            result.Type, tenantId, result.EffectiveAt);
 
         return result;
     }
 
-    /// <inheritdoc />
     public async Task<CurrentSubscriptionDto> GetCurrentAsync(Guid tenantId, CancellationToken ct)
     {
-        var tenant = await _db.Tenants
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.TenantId == tenantId, ct)
+        var tenant = await _tenants.GetByIdAsync(tenantId, ct)
             ?? throw new DomainException($"Tenant with ID '{tenantId}' not found.");
 
-        var plan = await _db.Plans
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PlanId == tenant.PlanId, ct)
-            ?? throw new DomainException("Associated plan not found. Platform configuration error.");
+        var plan = await _plans.GetByIdAsync(tenant.PlanId, ct)
+            ?? throw new DomainException("Associated plan not found.");
 
-        return new CurrentSubscriptionDto(
-            PlanId: plan.PlanId,
-            PlanName: plan.Name,
-            RateLimit: plan.RateLimit,
-            DailyQuota: plan.DailyQuota,
-            MonthlyPrice: plan.MonthlyPrice,
-            PendingPlanId: tenant.PendingPlanId);
+        return new CurrentSubscriptionDto(plan.PlanId, plan.Name, plan.RateLimit, plan.DailyQuota, plan.MonthlyPrice, tenant.PendingPlanId);
     }
 
-    private async Task<PlanChangeResult> HandleUpgradeAsync(
-        Tenant tenant, Plan currentPlan, Plan newPlan, CancellationToken ct)
+    private async Task<PlanChangeResult> HandleUpgradeAsync(Tenant tenant, Plan currentPlan, Plan newPlan, CancellationToken ct)
     {
-        // Call Stripe to update subscription with proration
         if (!string.IsNullOrEmpty(tenant.StripeSubscriptionId) && !string.IsNullOrEmpty(newPlan.StripePriceId))
-        {
-            await _stripeService.UpdateSubscriptionAsync(
-                tenant.StripeSubscriptionId,
-                newPlan.StripePriceId,
-                prorate: true,
-                ct);
-        }
+            await _stripeService.UpdateSubscriptionAsync(tenant.StripeSubscriptionId, newPlan.StripePriceId, prorate: true, ct);
 
-        // Apply plan change immediately
         var oldPlanId = tenant.PlanId;
         tenant.AssignPlan(newPlan.PlanId);
 
-        // Dispatch PlanChanged event with new limits
         await _eventDispatcher.DispatchAsync(new PlanChanged(
-            EventId: Guid.NewGuid(),
-            OccurredAt: DateTime.UtcNow,
-            TenantId: tenant.TenantId,
-            OldPlanId: oldPlanId,
-            NewPlanId: newPlan.PlanId,
-            NewRateLimit: newPlan.RateLimit,
-            NewDailyQuota: newPlan.DailyQuota,
-            Version: tenant.Version), ct);
+            Guid.NewGuid(), DateTime.UtcNow, tenant.TenantId, oldPlanId, newPlan.PlanId,
+            newPlan.RateLimit, newPlan.DailyQuota, tenant.Version), ct);
 
-        return new PlanChangeResult(
-            Type: "Upgrade",
-            EffectiveAt: DateTime.UtcNow,
-            ProratedAmount: null);
+        return new PlanChangeResult("Upgrade", DateTime.UtcNow, null);
     }
 
-    private async Task<PlanChangeResult> HandleDowngradeAsync(
-        Tenant tenant, Plan currentPlan, Plan newPlan, CancellationToken ct)
+    private async Task<PlanChangeResult> HandleDowngradeAsync(Tenant tenant, Plan newPlan, CancellationToken ct)
     {
-        // Schedule for next billing period
         tenant.SetPendingPlan(newPlan.PlanId);
 
-        // Notify Stripe to cancel current price at period end (if applicable)
         if (!string.IsNullOrEmpty(tenant.StripeSubscriptionId) && !string.IsNullOrEmpty(newPlan.StripePriceId))
-        {
-            await _stripeService.UpdateSubscriptionAsync(
-                tenant.StripeSubscriptionId,
-                newPlan.StripePriceId,
-                prorate: false,
-                ct);
-        }
+            await _stripeService.UpdateSubscriptionAsync(tenant.StripeSubscriptionId, newPlan.StripePriceId, prorate: false, ct);
 
-        // Calculate next billing date (approximate: 30 days from now)
-        var nextBillingDate = DateTime.UtcNow.AddDays(30);
-
-        return new PlanChangeResult(
-            Type: "Downgrade",
-            EffectiveAt: nextBillingDate,
-            ProratedAmount: null);
+        return new PlanChangeResult("Downgrade", DateTime.UtcNow.AddDays(30), null);
     }
 
-    /// <summary>
-    /// Validates that the tenant's active resources do not exceed the new plan's limits.
-    /// Prevents downgrade if current usage would violate the new plan's constraints.
-    /// </summary>
     private async Task ValidateDowngradeLimitsAsync(Guid tenantId, Plan newPlan, CancellationToken ct)
     {
-        // Check active API keys against new plan limit
         if (newPlan.MaxApiKeys.HasValue)
         {
-            var activeKeyCount = await _db.ApiKeys
-                .CountAsync(k => k.TenantId == tenantId && k.Status == ApiKeyStatus.Active, ct);
-
+            var activeKeyCount = await _apiKeys.CountAsync(k => k.TenantId == tenantId && k.Status == ApiKeyStatus.Active, ct);
             if (activeKeyCount > newPlan.MaxApiKeys.Value)
-            {
-                throw new SubscriptionLimitException(
-                    "UA-PLAN-002",
-                    $"Cannot downgrade: {activeKeyCount} active API keys exceed new plan limit of {newPlan.MaxApiKeys.Value}. " +
-                    "Revoke excess keys before downgrading.");
-            }
+                throw new SubscriptionLimitException("UA-PLAN-002",
+                    $"Cannot downgrade: {activeKeyCount} active API keys exceed limit of {newPlan.MaxApiKeys.Value}.");
         }
 
-        // Check active package subscriptions against new plan limit
         if (newPlan.MaxPackageSubscriptions.HasValue)
         {
-            var activeSubCount = await _db.Set<PackageSubscription>()
-                .CountAsync(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active, ct);
-
+            var activeSubCount = await _packageSubs.CountAsync(
+                s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active, ct);
             if (activeSubCount > newPlan.MaxPackageSubscriptions.Value)
-            {
-                throw new SubscriptionLimitException(
-                    "UA-PLAN-002",
-                    $"Cannot downgrade: {activeSubCount} active package subscriptions exceed new plan limit of {newPlan.MaxPackageSubscriptions.Value}. " +
-                    "Cancel excess subscriptions before downgrading.");
-            }
+                throw new SubscriptionLimitException("UA-PLAN-002",
+                    $"Cannot downgrade: {activeSubCount} package subscriptions exceed limit of {newPlan.MaxPackageSubscriptions.Value}.");
         }
     }
 }

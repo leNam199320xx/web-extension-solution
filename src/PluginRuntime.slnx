@@ -36,6 +36,9 @@
     <Project Path="Tests/PluginRuntime.IntegrationTests/PluginRuntime.IntegrationTests.csproj" />
     <Project Path="Tests/PluginRuntime.Runtime.Tests/PluginRuntime.Runtime.Tests.csproj" />
     <Project Path="Tests/PluginRuntime.Security.Tests/PluginRuntime.Security.Tests.csproj" />
-    <Project Path="..\tests\PluginRuntime.Api.Tests\PluginRuntime.Api.Tests.csproj" />
+    <Project Path="Tests/PublicApiGateway.Tests/PublicApiGateway.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Gateway/">
+    <Project Path="PublicApiGateway/PublicApiGateway.csproj" />
   </Folder>
 </Solution>

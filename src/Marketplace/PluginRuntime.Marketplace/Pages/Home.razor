@@ -1,0 +1,51 @@
+@page "/"
+@inject IExtensionService ExtensionService
+
+<PageTitle>Plugin Marketplace</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Plugin Runtime Marketplace</MudText>
+
+@if (_stats is not null)
+{
+    <MudGrid Class="mb-6">
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h5">@_stats.TotalExtensions</MudText>
+                <MudText>Extensions</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h5">@_stats.TotalPublishers</MudText>
+                <MudText>Publishers</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 text-center">
+                <MudText Typo="Typo.h5">@_stats.TotalSubscriptions</MudText>
+                <MudText>Subscriptions</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<MudText Typo="Typo.h5" Class="mb-3">Featured Extensions</MudText>
+<MudGrid>
+    @foreach (var ext in _featured)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <ExtensionCard Extension="ext" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private EcosystemStatsDto? _stats;
+    private List<ExtensionSummaryDto> _featured = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await ExtensionService.GetEcosystemStatsAsync();
+        _featured = await ExtensionService.GetFeaturedExtensionsAsync();
+    }
+}

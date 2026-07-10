@@ -1,0 +1,35 @@
+[
+  {
+    "AuditLogId": "a7b8c9d0-0001-0001-0001-000000000001",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000005",
+    "ActorId": "admin-user-001",
+    "Action": "Suspend",
+    "EntityType": "Tenant",
+    "PreviousValue": "Active",
+    "NewValue": "Suspended",
+    "Reason": "Payment failure - invoice overdue 30 days",
+    "Timestamp": "2024-06-15T09:45:00Z"
+  },
+  {
+    "AuditLogId": "a7b8c9d0-0001-0001-0001-000000000002",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "ActorId": "admin@acme.com",
+    "Action": "PlanChange",
+    "EntityType": "Tenant",
+    "PreviousValue": "Free",
+    "NewValue": "Pro",
+    "Reason": "Upgrade requested by tenant admin",
+    "Timestamp": "2024-04-01T10:00:00Z"
+  },
+  {
+    "AuditLogId": "a7b8c9d0-0001-0001-0001-000000000003",
+    "TenantId": "b2c3d4e5-0001-0001-0001-000000000001",
+    "ActorId": "admin@acme.com",
+    "Action": "KeyRevoked",
+    "EntityType": "ApiKey",
+    "PreviousValue": "Active",
+    "NewValue": "Revoked",
+    "Reason": "Key compromised - rotating credentials",
+    "Timestamp": "2024-05-01T12:00:00Z"
+  }
+]

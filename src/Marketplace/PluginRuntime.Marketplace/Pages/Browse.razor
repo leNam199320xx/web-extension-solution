@@ -1,0 +1,45 @@
+@page "/browse"
+@inject IExtensionService ExtensionService
+@inject ISearchEngine SearchEngine
+
+<PageTitle>Browse Extensions</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Browse Extensions</MudText>
+
+<MudTextField @bind-Value="_searchText" Label="Search" Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+              DebounceInterval="300" OnDebounceIntervalElapsed="OnSearch" />
+
+<MudGrid Class="mt-4">
+    @foreach (var ext in _results)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <ExtensionCard Extension="ext" />
+        </MudItem>
+    }
+</MudGrid>
+
+@if (!_results.Any())
+{
+    <MudAlert Severity="Severity.Info" Class="mt-4">No extensions found matching your criteria.</MudAlert>
+}
+
+@code {
+    private string _searchText = "";
+    private List<ExtensionSummaryDto> _allExtensions = [];
+    private List<ExtensionSummaryDto> _results = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var page = await ExtensionService.GetExtensionsAsync(new ExtensionQuery(null, null, null));
+        _allExtensions = page.Items;
+        _results = _allExtensions;
+    }
+
+    private void OnSearch()
+    {
+        var criteria = new SearchCriteria(_searchText, null, null, null);
+        var result = SearchEngine.Search(_allExtensions, criteria);
+        _results = result.Items;
+    }
+}

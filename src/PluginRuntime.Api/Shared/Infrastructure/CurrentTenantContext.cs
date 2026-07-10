@@ -14,4 +14,15 @@ public sealed class CurrentTenantContext : ICurrentTenantContext
     public Guid? PlanId { get; set; }
     public bool IsInternal { get; set; }
     public bool IsAdmin { get; set; }
+
+    /// <summary>
+    /// Sets the tenant context from middleware after JWT validation.
+    /// </summary>
+    public void SetContext(Guid? tenantId, Guid? planId, bool isInternal, bool isAdmin)
+    {
+        TenantId = tenantId;
+        PlanId = planId;
+        IsInternal = isInternal;
+        IsAdmin = isAdmin;
+    }
 }

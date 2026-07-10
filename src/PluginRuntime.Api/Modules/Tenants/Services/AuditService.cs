@@ -1,18 +1,18 @@
 using PluginRuntime.Api.Modules.Tenants.Domain;
-using PluginRuntime.Api.Shared.Infrastructure;
+using PluginRuntime.Api.Shared.Interfaces;
 
 namespace PluginRuntime.Api.Modules.Tenants.Services;
 
 /// <summary>
-/// Persists immutable audit log entries to the database.
+/// Persists immutable audit log entries using IRepository.
 /// </summary>
 public sealed class AuditService : IAuditService
 {
-    private readonly AppDbContext _db;
+    private readonly IRepository<AuditLogEntry> _auditLogs;
 
-    public AuditService(AppDbContext db)
+    public AuditService(IRepository<AuditLogEntry> auditLogs)
     {
-        _db = db;
+        _auditLogs = auditLogs;
     }
 
     public async Task LogAsync(
@@ -26,15 +26,9 @@ public sealed class AuditService : IAuditService
         CancellationToken ct)
     {
         var entry = AuditLogEntry.Create(
-            tenantId,
-            actorId,
-            actionType,
-            targetEntity,
-            previousState,
-            newState,
-            reason);
+            tenantId, actorId, actionType, targetEntity, previousState, newState, reason);
 
-        _db.AuditLogEntries.Add(entry);
-        await _db.SaveChangesAsync(ct);
+        await _auditLogs.AddAsync(entry, ct);
+        await _auditLogs.SaveChangesAsync(ct);
     }
 }

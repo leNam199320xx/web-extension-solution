@@ -1,0 +1,43 @@
+@inherits LayoutComponentBase
+@inject ApiAuthStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h6" Class="mr-4">Plugin Marketplace</MudText>
+        <MudSpacer />
+        <MudButton Href="/" Color="Color.Inherit">Home</MudButton>
+        <MudButton Href="/browse" Color="Color.Inherit">Browse</MudButton>
+        <MudButton Href="/docs" Color="Color.Inherit">Docs</MudButton>
+        <AuthorizeView>
+            <Authorized>
+                <MudMenu Label="@context.User.Identity?.Name" Color="Color.Inherit">
+                    <MudMenuItem Href="/my-plugins">My Plugins</MudMenuItem>
+                    <MudMenuItem Href="/subscriptions">Subscriptions</MudMenuItem>
+                    <MudMenuItem Href="/upload">Upload</MudMenuItem>
+                    <MudMenuItem Href="/settings">Settings</MudMenuItem>
+                    <MudMenuItem OnClick="Logout">Logout</MudMenuItem>
+                </MudMenu>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Href="/login" Color="Color.Inherit">Login</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudMainContent Class="pa-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthProvider.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

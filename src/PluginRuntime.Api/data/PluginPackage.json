@@ -1,0 +1,46 @@
+[
+  {
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000001",
+    "Name": "Analytics Suite",
+    "Description": "Comprehensive analytics plugins including real-time dashboards, data aggregation, and reporting tools.",
+    "MonthlyPrice": 19.99,
+    "Status": "Active",
+    "StripePriceId": "price_pkg_analytics",
+    "CreatedAt": "2024-02-15T10:00:00Z",
+    "UpdatedAt": "2024-06-01T14:00:00Z",
+    "Plugins": []
+  },
+  {
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000002",
+    "Name": "Security Toolkit",
+    "Description": "Advanced security plugins: vulnerability scanning, threat detection, and compliance reporting.",
+    "MonthlyPrice": 29.99,
+    "Status": "Active",
+    "StripePriceId": "price_pkg_security",
+    "CreatedAt": "2024-03-01T09:00:00Z",
+    "UpdatedAt": "2024-05-20T11:30:00Z",
+    "Plugins": []
+  },
+  {
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000003",
+    "Name": "Developer Tools",
+    "Description": "Productivity plugins for developers: code generation, testing utilities, and CI/CD integrations.",
+    "MonthlyPrice": 14.99,
+    "Status": "Active",
+    "StripePriceId": "price_pkg_devtools",
+    "CreatedAt": "2024-04-10T08:00:00Z",
+    "UpdatedAt": "2024-04-10T08:00:00Z",
+    "Plugins": []
+  },
+  {
+    "PackageId": "d4e5f6a7-0001-0001-0001-000000000004",
+    "Name": "Legacy Integration (Deprecated)",
+    "Description": "Legacy integration plugins — no longer maintained. Existing subscribers retain access.",
+    "MonthlyPrice": 9.99,
+    "Status": "Inactive",
+    "StripePriceId": "price_pkg_legacy",
+    "CreatedAt": "2024-01-15T12:00:00Z",
+    "UpdatedAt": "2024-06-30T16:00:00Z",
+    "Plugins": []
+  }
+]

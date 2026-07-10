@@ -60,7 +60,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Confirm TreatWarningsAsErrors produces zero warnings
     - _Requirements: 1.5_
 
-- [ ] 2. Checkpoint - Foundation complete
+- [x] 2. Checkpoint - Foundation complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 3. Security Engine - Manifest Validation & Cryptographic Verification
@@ -131,7 +131,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Over at least 100 randomized inputs
     - **Validates: Requirements 2.7**
 
-- [ ] 4. Checkpoint - Security Engine complete
+- [x] 4. Checkpoint - Security Engine complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Runtime Engine - Execution Pipeline & Plugin Loader
@@ -195,7 +195,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test resolution failure leaves no residual state
     - _Requirements: 3.11_
 
-- [ ] 6. Checkpoint - Runtime Engine complete
+- [x] 6. Checkpoint - Runtime Engine complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Capability Layer - Infrastructure Access Control
@@ -250,7 +250,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Over at least 100 randomized inputs
     - **Validates: Requirements 4.8**
 
-- [ ] 8. Checkpoint - Capability Layer complete
+- [x] 8. Checkpoint - Capability Layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. API Layer - HTTP Gateway & Controllers
@@ -307,7 +307,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test 50 MB+ upload rejected with 400
     - _Requirements: 5.9_
 
-- [ ] 10. Checkpoint - API Layer complete
+- [x] 10. Checkpoint - API Layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Infrastructure - Persistence & External Services
@@ -370,7 +370,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test InMemoryEventBus delivers events to subscribers
     - _Requirements: 6.8_
 
-- [ ] 12. Checkpoint - Infrastructure complete
+- [x] 12. Checkpoint - Infrastructure complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 13. Observability - Telemetry & Monitoring
@@ -411,7 +411,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test /health returns dependency status accurately
     - _Requirements: 7.8_
 
-- [ ] 14. Checkpoint - Observability complete
+- [x] 14. Checkpoint - Observability complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 15. Inter-Extension Communication
@@ -457,7 +457,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test privilege non-escalation (B runs with B's permissions, not A's)
     - _Requirements: 8.9_
 
-- [ ] 16. Checkpoint - Inter-Extension Communication complete
+- [x] 16. Checkpoint - Inter-Extension Communication complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 17. Admin Portal - Management UI
@@ -502,7 +502,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Test real-time updates rendered within SignalR connection
     - _Requirements: 9.8_
 
-- [ ] 18. Checkpoint - Admin Portal complete
+- [x] 18. Checkpoint - Admin Portal complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 19. Integration Testing & Security Hardening
@@ -558,7 +558,7 @@ Implement the Metadata-Driven Secure Plugin Runtime on .NET 10 following a phase
     - Generate HTML report with latency percentiles, throughput, and error rates
     - _Requirements: 10.4_
 
-- [ ] 20. Final Checkpoint - All integration tests pass
+- [x] 20. Final Checkpoint - All integration tests pass
   - Ensure all tests pass with zero failures and zero security validation bypasses, ask the user if questions arise.
 
 ## Notes

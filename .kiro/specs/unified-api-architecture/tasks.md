@@ -51,7 +51,7 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Implement `GlobalExceptionMiddleware` mapping exceptions to standardized JSON error responses
     - _Requirements: 12.4_
 
-  - [ ]* 1.7 Write property test for domain event dispatch completeness
+  - [x]* 1.7 Write property test for domain event dispatch completeness
     - **Property 1: Domain event dispatch completeness**
     - Test that all registered handlers for an event type receive the exact payload and no unrelated handlers are invoked
     - **Validates: Requirements 1.3**
@@ -90,20 +90,20 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Register configurations via TenantsModuleExtensions.AddTenantsModule()
     - _Requirements: 1.5_
 
-  - [ ]* 2.6 Write property tests for Tenant registration and API key limits
+  - [x]* 2.6 Write property tests for Tenant registration and API key limits
     - **Property 2: Tenant registration invariants** — valid registration produces Active tenant with Free plan and TenantCreated event
     - **Property 5: API key limit enforcement** — key generation succeeds iff N < M, key is 64 chars, hash matches SHA-256
     - **Validates: Requirements 3.2, 7.1, 3.5, 7.4, 7.6**
 
-  - [ ]* 2.7 Write property tests for Internal Tenant and tenant isolation
+  - [x]* 2.7 Write property tests for Internal Tenant and tenant isolation
     - **Property 16: Internal tenant authorization** — non-admin requests rejected with UA-INT-001
     - **Property 22: Tenant data isolation** — cross-tenant access rejected with UA-AUTH-001
     - **Validates: Requirements 6.7, 12.3**
 
-- [~] 3. Checkpoint - Ensure Shared Kernel and Tenants Module tests pass
+- [x] 3. Checkpoint - Ensure Shared Kernel and Tenants Module tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement Billing Module
+- [x] 4. Implement Billing Module
   - [x] 4.1 Implement Stripe service integration
     - Create `IStripeService` and `StripeService` wrapping Stripe.net SDK
     - Implement CreateCustomerAsync, CreateSubscriptionAsync, UpdateSubscriptionAsync, CancelSubscriptionItemAsync, AddSubscriptionItemAsync
@@ -124,13 +124,13 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Calculate overage from usage exceeding daily_quota across billing period
     - _Requirements: 8.1, 5.7_
 
-  - [~] 4.4 Implement Usage Aggregation background service
+  - [x] 4.4 Implement Usage Aggregation background service
     - Create `UsageAggregationService` (BackgroundService) running daily at 01:00 UTC
     - Aggregate usage_records into daily UsageAggregate: total_requests, successful_requests (2xx), failed_requests (4xx+)
     - Calculate avg_duration_ms per tenant per day
     - _Requirements: 8.5_
 
-  - [~] 4.5 Implement Stripe webhook endpoint and idempotent processing
+  - [x] 4.5 Implement Stripe webhook endpoint and idempotent processing
     - Create `WebhooksController` at `/api/billing/webhooks/stripe`
     - Verify webhook signature before processing
     - Deduplicate by stripe_event_id using webhook_events table
@@ -138,13 +138,13 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Return HTTP 200 for duplicate events (idempotent)
     - _Requirements: 8.7, 12.7_
 
-  - [~] 4.6 Implement BillingController and BillingEntityConfiguration
+  - [x] 4.6 Implement BillingController and BillingEntityConfiguration
     - Create `BillingController` at `/api/billing` with invoice listing, current invoice, usage query endpoints
     - Configure Invoice, UsageAggregate, WebhookEvent entity mappings
     - Register via BillingModuleExtensions.AddBillingModule()
     - _Requirements: 2.3, 1.5_
 
-  - [ ]* 4.7 Write property tests for Billing module
+  - [x]* 4.7 Write property tests for Billing module
     - **Property 3: Stripe customer creation rule** — TenantCreated with is_internal=false creates Stripe customer; is_internal=true does not
     - **Property 14: Invoice consolidation correctness** — total = base + overage + Σ(package prices)
     - **Property 15: Internal tenant billing exemption** — Internal plan generates no invoices, no overage, no rate limits
@@ -152,7 +152,7 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - **Property 19: Webhook idempotent processing** — duplicate webhook produces no state change, returns 200
     - **Validates: Requirements 3.3, 6.2, 7.2, 5.7, 8.1, 6.3, 6.4, 6.6, 8.5, 8.7**
 
-- [ ] 5. Implement Subscriptions Module
+- [x] 5. Implement Subscriptions Module
   - [x] 5.1 Implement Plugin Package service (admin CRUD)
     - Create `IPluginPackageService` and `PluginPackageService` with CreateAsync, UpdateAsync, DeactivateAsync, ListActiveAsync
     - Validate all plugin IDs exist and are Active; reject with UA-PKG-001 if any invalid
@@ -177,7 +177,7 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - On unsubscribe: cancel at period end, dispatch PackageUnsubscribed event
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 10.2, 10.3, 10.5, 10.6_
 
-  - [~] 5.4 Implement Subscription controllers and entity configuration
+  - [x] 5.4 Implement Subscription controllers and entity configuration
     - Create `PlanSubscriptionController` at `/api/subscriptions/plan`
     - Create `PackageSubscriptionController` at `/api/subscriptions/packages/{packageId}/subscribe`, `/unsubscribe`
     - Add `GET /api/subscriptions` returning current plan + all active package subscriptions
@@ -185,7 +185,7 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Register via SubscriptionsModuleExtensions.AddSubscriptionsModule()
     - _Requirements: 2.4, 10.4, 1.5_
 
-  - [ ]* 5.5 Write property tests for Subscriptions module
+  - [x]* 5.5 Write property tests for Subscriptions module
     - **Property 4: Plan change atomicity and direction** — upgrade applies immediately, downgrade schedules for next period
     - **Property 6: Package subscription limit enforcement** — subscribe succeeds iff N < M; Free plan always rejected
     - **Property 7: Plugin package validation** — invalid/inactive plugin IDs reject with UA-PKG-001
@@ -196,17 +196,17 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - **Property 13: Package subscription cancellation** — sets cancelled, cancels Stripe, dispatches event
     - **Validates: Requirements 3.4, 8.2, 8.3, 3.6, 5.3, 10.5, 4.3, 4.4, 4.5, 5.1, 5.4, 5.5, 10.2, 10.3**
 
-- [~] 6. Checkpoint - Ensure Billing and Subscriptions Module tests pass
+- [x] 6. Checkpoint - Ensure Billing and Subscriptions Module tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement Gateway Module
-  - [~] 7.1 Implement Plugin Access Resolver
+- [x] 7. Implement Gateway Module
+  - [x] 7.1 Implement Plugin Access Resolver
     - Create `IPluginAccessResolver` and `PluginAccessResolver` with GetAccessiblePluginsAsync, RecalculateAccessAsync, RecalculateForPackageAsync
     - Implement access resolution algorithm: union of free plugins (is_publicly_accessible=true) and package subscription plugins
     - UPSERT into plugin_access table with source (Free/Package) and package_id
     - _Requirements: 5.6, 9.2, 11.6_
 
-  - [~] 7.2 Implement Gateway Notification service (Redis pub/sub)
+  - [x] 7.2 Implement Gateway Notification service (Redis pub/sub)
     - Create `IGatewayNotificationService` and `GatewayNotificationService`
     - Implement PublishPlanChangedAsync → channel `tenant:plan-changed`
     - Implement PublishTenantStatusChangedAsync → channel `tenant:status-changed`
@@ -216,7 +216,7 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Implement retry logic: 3 retries with 5-second intervals; persist failed events on exhaustion
     - _Requirements: 9.1, 9.4, 9.5, 11.2, 11.3_
 
-  - [~] 7.3 Implement Gateway event handlers
+  - [x] 7.3 Implement Gateway event handlers
     - Create `PlanChangedHandler`: publish Redis notification with tenantId, planId, rateLimit, dailyQuota, version
     - Create `TenantStatusChangedHandler`: publish Redis notification with tenantId, status, version
     - Create `KeyRevokedHandler`: publish Redis notification with tenantId, keyId, keyHash, version
@@ -225,13 +225,13 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Create `PackageCompositionChangedHandler`: recalculate access for all affected tenants, publish notifications
     - _Requirements: 9.1, 9.3, 8.4_
 
-  - [~] 7.4 Implement GatewayEntityConfiguration and module registration
+  - [x] 7.4 Implement GatewayEntityConfiguration and module registration
     - Configure plugin_access table mapping with composite primary key (tenant_id, plugin_id)
     - Configure failed_notifications table for retry persistence
     - Register via GatewayModuleExtensions.AddGatewayModule()
     - _Requirements: 1.5, 9.2_
 
-  - [ ]* 7.5 Write property tests for Gateway module
+  - [x]* 7.5 Write property tests for Gateway module
     - **Property 12: Plugin access resolution correctness** — access granted iff public OR subscribed package contains plugin
     - **Property 17: Tenant status change propagation** — status change produces event, Redis notification, and audit log
     - **Property 20: Package composition change propagation** — affected tenants get recalculated access and Redis notification
@@ -239,14 +239,14 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - **Property 23: Redis notification payload compatibility** — payload matches expected JSON schema
     - **Validates: Requirements 5.6, 9.2, 11.6, 7.3, 7.5, 4.2, 9.3, 9.5, 11.2**
 
-- [ ] 8. Implement Plugins Module integration and Security Middleware
-  - [~] 8.1 Implement Plugins Module extension and route registration
+- [x] 8. Implement Plugins Module integration and Security Middleware
+  - [x] 8.1 Implement Plugins Module extension and route registration
     - Create `PluginsModuleExtensions` with AddPluginsModule() and MapPluginsEndpoints()
     - Create `PluginsController` at `/api/plugins` for plugin CRUD, execution, manifests, capabilities
     - Enforce max_plugins_upload limit from tenant's plan via Shared Kernel
     - _Requirements: 2.1, 3.5, 1.6_
 
-  - [~] 8.2 Implement JWT Authentication and TenantContext middleware
+  - [x] 8.2 Implement JWT Authentication and TenantContext middleware
     - Create `JwtAuthenticationMiddleware`: validate JWT bearer tokens (signature, expiration, issuer, audience)
     - Skip auth for /health, /ready, /metrics, and Stripe webhook endpoint
     - Create `TenantContextMiddleware`: resolve tenant from JWT claims, populate ICurrentTenantContext
@@ -254,49 +254,49 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Reject cross-tenant access with UA-AUTH-001
     - _Requirements: 12.1, 12.2, 12.3, 11.5_
 
-  - [~] 8.3 Implement Admin endpoints
+  - [x] 8.3 Implement Admin endpoints
     - Create admin controller at `/api/admin` for cross-module platform admin operations
     - Include tenant listing with is_internal filter, package management, plan management
     - Require Platform_Admin role authentication
     - _Requirements: 2.5, 6.5, 6.7_
 
-  - [~] 8.4 Implement input validation and security hardening
+  - [x] 8.4 Implement input validation and security hardening
     - Add input validation/sanitization on all module endpoints (prevent SQL injection, XSS)
     - Ensure sensitive data masking in logs (API keys, Stripe secrets, payment details)
     - Enforce HTTPS (TLS 1.2+) configuration
     - Add X-Module response header indicating which module handled the request
     - _Requirements: 12.4, 12.5, 12.6, 13.6_
 
-- [~] 9. Checkpoint - Ensure Gateway, Plugins, and Security tests pass
+- [x] 9. Checkpoint - Ensure Gateway, Plugins, and Security tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Implement Health, Observability, and Database Migrations
-  - [~] 10.1 Implement health checks and readiness endpoints
+- [x] 10. Implement Health, Observability, and Database Migrations
+  - [x] 10.1 Implement health checks and readiness endpoints
     - Create `/health` endpoint checking PostgreSQL, Redis, and Stripe API (5-second timeout)
     - Return HTTP 200 with "Healthy" status and per-dependency + per-module health indicators
     - Return HTTP 503 with "Unhealthy" identifying failing dependency on timeout
     - Create `/ready` endpoint for Kubernetes readiness probe
     - _Requirements: 13.1, 13.2, 2.6_
 
-  - [~] 10.2 Implement OpenTelemetry tracing and structured logging
+  - [x] 10.2 Implement OpenTelemetry tracing and structured logging
     - Configure OpenTelemetry with spans for API requests identifying module, operation, DB calls, Redis ops, Stripe calls
     - Configure structured JSON logging: timestamp (ISO 8601), level, traceId, spanId, tenantId, module, method, path, statusCode, durationMs
     - Ensure no sensitive data in traces/logs
     - _Requirements: 13.3, 13.4_
 
-  - [~] 10.3 Implement Prometheus metrics endpoint
+  - [x] 10.3 Implement Prometheus metrics endpoint
     - Create `/metrics` endpoint with Prometheus-compatible format
     - Track: total requests per module, error rates per module, Stripe API latency, package subscription count, background job status
     - _Requirements: 13.5, 2.6_
 
-  - [~] 10.4 Create EF Core database migrations
+  - [x] 10.4 Create EF Core database migrations
     - Create initial migration with all tables: tenants (extended), plans, api_keys, plugin_packages, package_plugins, package_subscriptions, plugin_access, invoices, usage_aggregates, webhook_events, audit_log
     - Include plan seed data (Free, Pro, Enterprise, Internal)
     - Add is_publicly_accessible column to existing plugins table
     - Ensure backward compatibility with existing Public API Gateway read patterns
     - _Requirements: 11.1, 11.4, 1.5_
 
-  - [ ]* 10.5 Write integration tests with Testcontainers
+  - [x]* 10.5 Write integration tests with Testcontainers
     - Test full module registration via WebApplicationFactory<Program>
     - Test database migrations apply cleanly with Testcontainers PostgreSQL
     - Test Redis pub/sub notification flow with Testcontainers Redis
@@ -304,38 +304,38 @@ This plan implements the restructuring of PluginRuntime.Api into a Modular Monol
     - Mock Stripe API via WireMock.Net
     - _Requirements: 1.1, 1.3, 9.1, 11.1_
 
-- [ ] 11. Wire modules together and implement cross-cutting flows
-  - [~] 11.1 Wire tenant registration end-to-end flow
+- [x] 11. Wire modules together and implement cross-cutting flows
+  - [x] 11.1 Wire tenant registration end-to-end flow
     - Connect TenantService → TenantCreated event → BillingService.CreateStripeCustomerAsync
     - Verify Free plan assignment → plan limits active immediately
     - Test internal tenant path: no Stripe customer, Internal plan, unlimited access
     - _Requirements: 7.1, 7.2, 3.2, 3.3, 6.1, 6.2_
 
-  - [~] 11.2 Wire plan change end-to-end flow
+  - [x] 11.2 Wire plan change end-to-end flow
     - Connect PlanSubscriptionService → PlanChanged event → GatewayModule → Redis pub/sub
     - Verify upgrade immediate application with proration
     - Verify downgrade scheduling with pending_plan_id
     - Ensure version increment and monotonic ordering
     - _Requirements: 8.2, 8.3, 8.4, 9.1, 9.5_
 
-  - [~] 11.3 Wire package subscription end-to-end flow
+  - [x] 11.3 Wire package subscription end-to-end flow
     - Connect PackageSubscriptionService → PackageSubscribed event → GatewayModule → AccessResolver → Redis pub/sub
     - Verify plugin_access table updated with correct plugin set
     - Verify unsubscription → PackageUnsubscribed → access revocation at period end
     - Verify package composition change → recalculation for all affected tenants
     - _Requirements: 5.1, 5.2, 5.5, 5.6, 4.2, 9.3_
 
-  - [~] 11.4 Wire API key revocation end-to-end flow
+  - [x] 11.4 Wire API key revocation end-to-end flow
     - Connect ApiKeyService.RevokeAsync → KeyRevoked event → GatewayModule → Redis pub/sub
     - Verify Redis message on `tenant:key-revoked` channel with keyId, keyHash, version
     - _Requirements: 7.5, 9.1_
 
-  - [~] 11.5 Implement OpenAPI/Swagger document aggregation
+  - [x] 11.5 Implement OpenAPI/Swagger document aggregation
     - Configure Swashbuckle/NSwag to aggregate all module endpoints into single OpenAPI document
     - Ensure route prefixes are correctly grouped per module
     - _Requirements: 1.7_
 
-- [~] 12. Final checkpoint - Ensure all tests pass
+- [x] 12. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

@@ -1,0 +1,17 @@
+{
+  "extension_id": "com.samples.hello-world",
+  "version": "1.0.0",
+  "name": "Hello World",
+  "description": "The simplest possible extension. Receives a name and returns a greeting. No capabilities needed.",
+  "author": "Plugin Runtime Team",
+  "entry_point": "HelloWorld.Extension.dll",
+  "entry_class": "HelloWorld.Extension.Plugin",
+  "capabilities": [],
+  "permissions": [],
+  "visibility": "public",
+  "resource_limits": {
+    "max_memory_mb": 64,
+    "max_execution_seconds": 5,
+    "max_cpu_percent": 10
+  }
+}
