@@ -1,4 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.2.4" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,6 +8,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>PluginRuntime.AppHost</RootNamespace>
+    <IsAspireHost>true</IsAspireHost>
+    <RunAnalyzersDuringLiveAnalysis>True</RunAnalyzersDuringLiveAnalysis>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PluginRuntime.Api\PluginRuntime.Api.csproj" />
+    <ProjectReference Include="..\..\PublicApiGateway\PublicApiGateway.csproj" />
+    <ProjectReference Include="..\..\Marketplace\PluginRuntime.Marketplace.Server\PluginRuntime.Marketplace.Server.csproj" />
+    <ProjectReference Include="..\..\ConsumerPortal\PluginRuntime.ConsumerPortal.Server\PluginRuntime.ConsumerPortal.Server.csproj" />
+    <ProjectReference Include="..\..\Admin\PluginRuntime.Admin\PluginRuntime.Admin.csproj" />
+  </ItemGroup>
 
 </Project>

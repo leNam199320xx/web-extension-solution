@@ -112,7 +112,7 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
             // ── Audit logger — capture entries for assertions ────────
             AuditLogger
                 .When(x => x.LogAsync(Arg.Any<AuditEntry>(), Arg.Any<CancellationToken>()))
-                .Do(ci => CapturedAuditEntries.Add(ci.Arg<AuditEntry>()));
+                .Do(ci => CapturedAuditEntries.Add(ci.Arg<AuditEntry>() ?? Arg.Any<AuditEntry>()));
             AuditLogger
                 .LogAsync(Arg.Any<AuditEntry>(), Arg.Any<CancellationToken>())
                 .Returns(Task.CompletedTask);

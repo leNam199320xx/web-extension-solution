@@ -1,0 +1,56 @@
+<Solution>
+  <Folder Name="/Admin/">
+    <Project Path="src/Admin/PluginRuntime.Admin/PluginRuntime.Admin.csproj" />
+  </Folder>
+  <Folder Name="/ConsumerPortal/">
+    <Project Path="src/ConsumerPortal/PluginRuntime.ConsumerPortal.Server/PluginRuntime.ConsumerPortal.Server.csproj" />
+    <Project Path="src/ConsumerPortal/PluginRuntime.ConsumerPortal/PluginRuntime.ConsumerPortal.csproj" />
+  </Folder>
+  <Folder Name="/Marketplace/">
+    <Project Path="src/Marketplace/PluginRuntime.Marketplace.Server/PluginRuntime.Marketplace.Server.csproj" />
+    <Project Path="src/Marketplace/PluginRuntime.Marketplace/PluginRuntime.Marketplace.csproj" />
+  </Folder>
+  <Folder Name="/API/">
+    <Project Path="src/API/PluginRuntime.Api/PluginRuntime.Api.csproj" />
+  </Folder>
+  <Folder Name="/Monolith/">
+    <Project Path="src/PluginRuntime.Api/PluginRuntime.Api.csproj" />
+  </Folder>
+  <Folder Name="/Aspire/">
+    <Project Path="src/Aspire/PluginRuntime.AppHost/PluginRuntime.AppHost.csproj" />
+    <Project Path="src/Aspire/PluginRuntime.ServiceDefaults/PluginRuntime.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/Capabilities/">
+    <Project Path="src/Capabilities/PluginRuntime.Capabilities.Abstractions/PluginRuntime.Capabilities.Abstractions.csproj" />
+    <Project Path="src/Capabilities/PluginRuntime.Capabilities.Cache/PluginRuntime.Capabilities.Cache.csproj" />
+    <Project Path="src/Capabilities/PluginRuntime.Capabilities.Database/PluginRuntime.Capabilities.Database.csproj" />
+    <Project Path="src/Capabilities/PluginRuntime.Capabilities.Extension/PluginRuntime.Capabilities.Extension.csproj" />
+    <Project Path="src/Capabilities/PluginRuntime.Capabilities.Network/PluginRuntime.Capabilities.Network.csproj" />
+    <Project Path="src/Capabilities/PluginRuntime.Capabilities.Storage/PluginRuntime.Capabilities.Storage.csproj" />
+  </Folder>
+  <Folder Name="/Core/">
+    <Project Path="src/Core/PluginRuntime.Core/PluginRuntime.Core.csproj" />
+    <Project Path="src/Core/PluginRuntime.Runtime/PluginRuntime.Runtime.csproj" />
+    <Project Path="src/Core/PluginRuntime.Security/PluginRuntime.Security.csproj" />
+  </Folder>
+  <Folder Name="/Infrastructure/">
+    <Project Path="src/Infrastructure/PluginRuntime.Infrastructure.KeyVault/PluginRuntime.Infrastructure.KeyVault.csproj" />
+    <Project Path="src/Infrastructure/PluginRuntime.Infrastructure/PluginRuntime.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/SDK/">
+    <Project Path="src/SDK/PluginRuntime.Sdk/PluginRuntime.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="src/Tests/PluginRuntime.Admin.Tests/PluginRuntime.Admin.Tests.csproj" />
+    <Project Path="src/Tests/PluginRuntime.Api.Tests/PluginRuntime.Api.Tests.csproj" />
+    <Project Path="src/Tests/PluginRuntime.Core.Tests/PluginRuntime.Core.Tests.csproj" />
+    <Project Path="src/Tests/PluginRuntime.Infrastructure.Tests/PluginRuntime.Infrastructure.Tests.csproj" />
+    <Project Path="src/Tests/PluginRuntime.IntegrationTests/PluginRuntime.IntegrationTests.csproj" />
+    <Project Path="src/Tests/PluginRuntime.Runtime.Tests/PluginRuntime.Runtime.Tests.csproj" />
+    <Project Path="src/Tests/PluginRuntime.Security.Tests/PluginRuntime.Security.Tests.csproj" />
+    <Project Path="src/Tests/PublicApiGateway.Tests/PublicApiGateway.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Gateway/">
+    <Project Path="src/PublicApiGateway/PublicApiGateway.csproj" />
+  </Folder>
+</Solution>

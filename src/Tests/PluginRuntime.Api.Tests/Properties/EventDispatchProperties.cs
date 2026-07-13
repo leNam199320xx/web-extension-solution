@@ -50,11 +50,11 @@ public class EventDispatchProperties
 
         // Assert: both handlers received the exact payload
         await handler1.Received().HandleAsync(
-            Arg.Is<TenantCreated>(e => e.EventId == domainEvent.EventId && e.TenantId == tenantId),
+            Arg.Is<TenantCreated>(e => e != null && e.EventId == domainEvent.EventId && e.TenantId == tenantId),
             Arg.Any<CancellationToken>());
 
         await handler2.Received().HandleAsync(
-            Arg.Is<TenantCreated>(e => e.EventId == domainEvent.EventId && e.TenantId == tenantId),
+            Arg.Is<TenantCreated>(e => e != null && e.EventId == domainEvent.EventId && e.TenantId == tenantId),
             Arg.Any<CancellationToken>());
 
         // Assert: unrelated handler was NOT invoked
@@ -93,7 +93,7 @@ public class EventDispatchProperties
 
         // Assert: the success handler was still invoked
         await successHandler.Received(1).HandleAsync(
-            Arg.Is<TenantCreated>(e => e.EventId == domainEvent.EventId),
+            Arg.Is<TenantCreated>(e => e != null && e.EventId == domainEvent.EventId),
             Arg.Any<CancellationToken>());
     }
 }

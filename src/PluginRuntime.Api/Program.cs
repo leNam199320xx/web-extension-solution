@@ -45,7 +45,7 @@ builder.Services.AddSingleton<MetricsCollector>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
     {
         Title = "PluginRuntime Unified API",
         Version = "v1",
