@@ -180,6 +180,8 @@ ai/index.md              → AI behavior rules
 | Extension Ecosystem | `docs/architecture/extension-ecosystem.md` |
 | Verification Engine | `docs/architecture/verification-engine-spec.md` |
 | Permission Review | `docs/architecture/permission-review-spec.md` |
+| Aspire & Local Dev | `docs/implementation/solution-structure.md` §Aspire |
+| User Guides | `guides/README.md` |
 
 ---
 
@@ -187,12 +189,36 @@ ai/index.md              → AI behavior rules
 
 ```
 Architecture & Specification  ████████████████████ 100%
-Implementation                □□□□□□□□□□□□□□□□□□□□   0%
-Testing                       □□□□□□□□□□□□□□□□□□□□   0%
+Aspire Orchestration          ████████████████████ 100%
+Frontend Portals (UI)         ████████████████░░░░  80%
+Backend API & Gateway         ████████████████░░░░  80%
+Plugin Runtime Engine         ████░░░░□□□□□□□□□□□□  20%
+Testing                       ██□□□□□□□□□□□□□□□□□□  10%
 Production                    □□□□□□□□□□□□□□□□□□□□   0%
 ```
 
-Next phase: Implementation.
+### Port Allocation
+
+| Service | HTTP | HTTPS | Description |
+|---------|------|-------|-------------|
+| Aspire Dashboard | 6000 | 6001 | Telemetry, logs, traces |
+| API Backend | 6100 | 6101 | Core REST API + Swagger |
+| API Gateway | 6200 | 6201 | Reverse proxy + rate limiting |
+| Marketplace | 6300 | 6301 | Plugin discovery & upload |
+| Consumer Portal | 6400 | 6401 | API key mgmt & billing |
+| Admin Portal | 6500 | 6501 | Platform administration |
+
+### Running Locally
+
+```bash
+# Full platform via Aspire (recommended)
+dotnet run --project src/Aspire/PluginRuntime.AppHost
+
+# Full platform via batch file (alternative, no Aspire)
+run-all.bat
+```
+
+Next phase: Plugin Runtime Engine implementation.
 
 ---
 

@@ -1,0 +1,173 @@
+@page "/upload"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IUploadService UploadService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Upload Plugin</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Upload Plugin</MudText>
+
+@* ── Step 1: File Upload ───────────────────────────────────────────── *@
+@if (_uploadResult is null)
+{
+    <MudPaper Class="pa-6 mb-4" Elevation="2">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Drag and drop your .plugin.zip file</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Package must contain manifest.json + compiled DLL. Max 50MB.
+            </MudText>
+            <MudFileUpload T="IBrowserFile" FilesChanged="OnFileSelected" Accept=".zip"
+                           MaximumFileCount="1">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.AttachFile">
+                        Select File
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudStack>
+    </MudPaper>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+    }
+
+    @* ── Manifest Preview ──────────────────────────────────────────── *@
+    @if (_manifest is not null)
+    {
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-2">Manifest Preview</MudText>
+            <MudGrid>
+                <MudItem xs="6"><MudText><strong>Extension ID:</strong> @_manifest.ExtensionId</MudText></MudItem>
+                <MudItem xs="6"><MudText><strong>Version:</strong> @_manifest.Version</MudText></MudItem>
+            </MudGrid>
+
+            @if (_manifest.Capabilities.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Capabilities:</MudText>
+                <MudStack Row Spacing="1" Wrap="Wrap.Wrap">
+                    @foreach (var cap in _manifest.Capabilities)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@cap</MudChip>
+                    }
+                </MudStack>
+            }
+
+            @if (_manifest.Permissions.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Permissions:</MudText>
+                <MudStack Row Spacing="1" Wrap="Wrap.Wrap">
+                    @foreach (var perm in _manifest.Permissions)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@perm</MudChip>
+                    }
+                </MudStack>
+            }
+
+            <MudStack Row Class="mt-4" Spacing="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="SubmitUpload" Disabled="_uploading"
+                           StartIcon="@Icons.Material.Filled.CloudUpload">
+                    @if (_uploading) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+                    Submit for Review
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" OnClick="Reset">Cancel</MudButton>
+            </MudStack>
+        </MudPaper>
+    }
+
+    @if (_uploading)
+    {
+        <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+    }
+}
+else
+{
+    @* ── Step 2: Upload Success ────────────────────────────────────── *@
+    <MudPaper Class="pa-6 text-center" Elevation="2">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+        <MudText Typo="Typo.h5" Class="mt-3">Plugin Uploaded Successfully!</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-3">
+            Status: @_uploadResult.Status — @(_uploadResult.Message ?? "Awaiting admin review.")
+        </MudText>
+        <MudStack Row Justify="Justify.Center" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/my-plugins">
+                View My Plugins
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="Reset">
+                Upload Another
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private IBrowserFile? _file;
+    private ManifestPreviewDto? _manifest;
+    private UploadResultDto? _uploadResult;
+    private bool _uploading;
+    private string? _error;
+    private Stream? _fileStream;
+
+    private async Task OnFileSelected(IBrowserFile file)
+    {
+        _error = null;
+        _manifest = null;
+
+        if (file.Size > 50 * 1024 * 1024)
+        {
+            _error = "File exceeds 50MB limit.";
+            return;
+        }
+
+        if (!file.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            _error = "Only .zip files are accepted.";
+            return;
+        }
+
+        _file = file;
+        _fileStream = file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+
+        // Parse manifest client-side
+        var memStream = new MemoryStream();
+        await _fileStream.CopyToAsync(memStream);
+        memStream.Position = 0;
+        _fileStream = memStream;
+
+        _manifest = await UploadService.ParseManifestAsync(memStream, file.Name);
+        if (_manifest is null)
+        {
+            _error = "Invalid plugin package — manifest.json not found or malformed.";
+        }
+    }
+
+    private async Task SubmitUpload()
+    {
+        if (_fileStream is null) return;
+        _uploading = true;
+        _error = null;
+
+        _uploadResult = await UploadService.UploadPluginAsync(_fileStream, _file!.Name);
+
+        if (_uploadResult is null)
+        {
+            _error = "Upload failed. Please try again.";
+        }
+
+        _uploading = false;
+    }
+
+    private void Reset()
+    {
+        _file = null;
+        _manifest = null;
+        _uploadResult = null;
+        _fileStream?.Dispose();
+        _fileStream = null;
+        _error = null;
+    }
+}

@@ -1,0 +1,266 @@
+@page "/api-keys"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IApiKeyService KeyService
+@inject IJSRuntime JS
+
+<PageTitle>API Keys</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">API Keys</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Create Key
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@* ── Newly created key banner ──────────────────────────────────────── *@
+@if (_newKey is not null)
+{
+    <MudAlert Severity="Severity.Success" Class="mb-4" Icon="@Icons.Material.Filled.Key">
+        <MudStack>
+            <MudText Typo="Typo.subtitle1">Your new API key has been created. Copy it now — it won't be shown again.</MudText>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudTextField Value="@_newKey.PlaintextKey" ReadOnly Variant="Variant.Outlined"
+                              Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                              OnAdornmentClick="CopyNewKey" Style="font-family:monospace;" />
+            </MudStack>
+        </MudStack>
+    </MudAlert>
+}
+
+@* ── Keys table ────────────────────────────────────────────────────── *@
+<MudDataGrid T="ApiKeyItemDto" Items="_keys" Hover Striped Loading="_loading">
+    <Columns>
+        <PropertyColumn Property="x => x.Name" Title="Name">
+            <CellTemplate Context="ctx">
+                <MudText>@(ctx.Item.Name ?? "Unnamed")</MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Prefix" Title="Key">
+            <CellTemplate Context="ctx">
+                <MudText Style="font-family:monospace;">@ctx.Item.Prefix•••@ctx.Item.Suffix</MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Status">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Size="Size.Small" Color="@StatusColor(ctx.Item.Status)">
+                    @ctx.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd" />
+        <PropertyColumn Property="x => x.LastUsedAt" Title="Last Used">
+            <CellTemplate Context="ctx">
+                <MudText>@(ctx.Item.LastUsedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.ExpiresAt" Title="Expires">
+            <CellTemplate Context="ctx">
+                @if (ctx.Item.ExpiresAt.HasValue)
+                {
+                    var daysLeft = (ctx.Item.ExpiresAt.Value - DateTime.UtcNow).TotalDays;
+                    <MudText Color="@(daysLeft < 7 ? Color.Warning : Color.Default)">
+                        @ctx.Item.ExpiresAt.Value.ToString("yyyy-MM-dd")
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">Never</MudText>
+                }
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Actions" Sortable="false">
+            <CellTemplate Context="ctx">
+                <MudStack Row Spacing="1">
+                    @if (ctx.Item.Status == "Active")
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Size="Size.Small" Color="Color.Info"
+                                       OnClick="() => RotateKey(ctx.Item)"
+                                       Title="Rotate" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => ConfirmRevoke(ctx.Item)"
+                                       Title="Revoke" />
+                    }
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+@* ── Create dialog ─────────────────────────────────────────────────── *@
+<MudDialog @bind-Visible="_createDialogOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Create API Key</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_newKeyName" Label="Key Name (optional)"
+                      Placeholder="e.g. Production, Staging"
+                      Variant="Variant.Outlined" Class="mb-3" />
+        <MudNumericField @bind-Value="_newKeyExpDays" Label="Expires in (days, empty = never)"
+                         Min="1" Max="365"
+                         Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _createDialogOpen = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="CreateKey" Disabled="_creating">
+            @if (_creating) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* ── Revoke confirm dialog ─────────────────────────────────────────── *@
+<MudDialog @bind-Visible="_revokeDialogOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Revoke API Key</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>
+            Are you sure you want to revoke key <strong>@(_revokeTarget?.Name ?? _revokeTarget?.Prefix)</strong>?
+            This cannot be undone.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _revokeDialogOpen = false">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   OnClick="RevokeKey" Disabled="_revoking">
+            @if (_revoking) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+            Revoke
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ApiKeyItemDto> _keys = [];
+    private bool _loading;
+    private string? _error;
+
+    // Create dialog
+    private bool _createDialogOpen;
+    private string? _newKeyName;
+    private int? _newKeyExpDays;
+    private bool _creating;
+    private ApiKeyGenerationResult? _newKey;
+
+    // Revoke dialog
+    private bool _revokeDialogOpen;
+    private ApiKeyItemDto? _revokeTarget;
+    private bool _revoking;
+
+    protected override async Task OnInitializedAsync() => await LoadKeysAsync();
+
+    private async Task LoadKeysAsync()
+    {
+        _loading = true;
+        _error = null;
+        var result = await KeyService.GetKeysAsync();
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _keys = result.Value.Keys;
+        }
+        else if (result.IsNetworkError)
+        {
+            _error = "Unable to connect to server.";
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to load keys.";
+        }
+        _loading = false;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _newKeyName = null;
+        _newKeyExpDays = null;
+        _createDialogOpen = true;
+    }
+
+    private async Task CreateKey()
+    {
+        _creating = true;
+        var request = new Models.Requests.GenerateKeyRequest(_newKeyName, _newKeyExpDays);
+        var result = await KeyService.GenerateKeyAsync(request);
+        _creating = false;
+        _createDialogOpen = false;
+
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _newKey = result.Value;
+            await LoadKeysAsync();
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to create key.";
+        }
+    }
+
+    private async Task CopyNewKey()
+    {
+        if (_newKey is not null)
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _newKey.PlaintextKey);
+        }
+    }
+
+    private void ConfirmRevoke(ApiKeyItemDto key)
+    {
+        _revokeTarget = key;
+        _revokeDialogOpen = true;
+    }
+
+    private async Task RevokeKey()
+    {
+        if (_revokeTarget is null) return;
+        _revoking = true;
+        var result = await KeyService.RevokeKeyAsync(_revokeTarget.KeyId);
+        _revoking = false;
+        _revokeDialogOpen = false;
+
+        if (result.IsSuccess)
+        {
+            await LoadKeysAsync();
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to revoke key.";
+        }
+    }
+
+    private async Task RotateKey(ApiKeyItemDto key)
+    {
+        var result = await KeyService.RotateKeyAsync(key.KeyId);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _newKey = result.Value;
+            await LoadKeysAsync();
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to rotate key.";
+        }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Active" => Color.Success,
+        "Revoked" => Color.Error,
+        "Expired" => Color.Warning,
+        _ => Color.Default
+    };
+}

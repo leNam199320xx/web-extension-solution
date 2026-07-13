@@ -1,0 +1,87 @@
+@page "/docs"
+
+<PageTitle>Documentation</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Plugin Developer Documentation</MudText>
+
+<MudExpansionPanels MultiExpansion Class="mb-4">
+    <MudExpansionPanel Text="Quick Start">
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Get your first plugin running in 5 steps:
+        </MudText>
+        <MudList T="string" Dense>
+            <MudListItem Icon="@Icons.Material.Filled.LooksOne">Install the SDK: <code>dotnet add package PluginRuntime.Sdk</code></MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.LooksTwo">Create a class implementing <code>IPlugin</code></MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Looks3">Write your <code>manifest.json</code> declaring capabilities</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Looks4">Package as <code>my-plugin.plugin.zip</code> (manifest + DLL)</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Looks5">Upload via <MudLink Href="/upload">Upload page</MudLink></MudListItem>
+        </MudList>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Manifest Reference">
+        <MudPaper Class="pa-3" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem; overflow-x:auto;">
+            <pre>{
+  "extension_id": "com.company.my-plugin",
+  "version": "1.0.0",
+  "display_name": "My Plugin",
+  "description": "A brief description",
+  "author": "Your Name",
+  "category": "Analytics",
+  "entry_point": "MyPlugin.dll",
+  "capabilities": ["Database.Read", "Network.Http"],
+  "permissions": [
+    {
+      "scope": "database.read",
+      "justification": "Read user analytics data"
+    }
+  ],
+  "visibility": "Public",
+  "timeout_ms": 5000,
+  "max_memory_mb": 128
+}</pre>
+        </MudPaper>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Capabilities">
+        <MudSimpleTable Hover Dense>
+            <thead><tr><th>Capability</th><th>Interface</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td>Database</td><td><code>IDatabaseCapability</code></td><td>Read/write to isolated DB schema</td></tr>
+                <tr><td>Network</td><td><code>INetworkCapability</code></td><td>HTTP calls to approved domains</td></tr>
+                <tr><td>Storage</td><td><code>IStorageCapability</code></td><td>Object storage (upload/download)</td></tr>
+                <tr><td>Cache</td><td><code>ICacheCapability</code></td><td>Redis-backed key/value cache</td></tr>
+                <tr><td>Extension</td><td><code>IExtensionCapability</code></td><td>Call other extensions</td></tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Plugin Lifecycle">
+        <MudText Typo="Typo.body1">
+            Plugins go through these stages:
+        </MudText>
+        <MudTimeline>
+            <MudTimelineItem Color="Color.Info">
+                <MudText><strong>Upload</strong> — Package submitted, manifest parsed</MudText>
+            </MudTimelineItem>
+            <MudTimelineItem Color="Color.Warning">
+                <MudText><strong>Pending Review</strong> — Admin reviews permissions and security scan</MudText>
+            </MudTimelineItem>
+            <MudTimelineItem Color="Color.Success">
+                <MudText><strong>Approved</strong> — Plugin signed, available for execution</MudText>
+            </MudTimelineItem>
+            <MudTimelineItem Color="Color.Default">
+                <MudText><strong>Active</strong> — Running in production, monitored</MudText>
+            </MudTimelineItem>
+        </MudTimeline>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Versioning Rules">
+        <MudList T="string" Dense>
+            <MudListItem Icon="@Icons.Material.Filled.Rule">Use semantic versioning (major.minor.patch)</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Rule">New permissions require new major version</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Rule">Each version goes through approval independently</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Rule">Previous approved versions remain active during review</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Rule">Rejected versions can be resubmitted after fixes</MudListItem>
+        </MudList>
+    </MudExpansionPanel>
+</MudExpansionPanels>

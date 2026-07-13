@@ -1,0 +1,110 @@
+@page "/settings"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject ITenantService TenantService
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@* ── Profile ──────────────────────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">Profile</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_name" Label="Display Name" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_email" Label="Email" Variant="Variant.Outlined" ReadOnly />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_company" Label="Company" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SaveProfile" Disabled="_saving">
+                @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+                Save Profile
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* ── Notifications ────────────────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">Notification Preferences</MudText>
+    <MudStack Spacing="2">
+        <MudSwitch @bind-Value="_usageAlerts" Label="Usage quota warnings (80% threshold)" Color="Color.Primary" />
+        <MudSwitch @bind-Value="_billingNotifications" Label="Billing notifications" Color="Color.Primary" />
+        <MudSwitch @bind-Value="_keyExpirationReminders" Label="API key expiration reminders" Color="Color.Primary" />
+    </MudStack>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
+               OnClick="SaveNotifications" Disabled="_saving">
+        Save Preferences
+    </MudButton>
+</MudPaper>
+
+@code {
+    private string _name = "";
+    private string _email = "";
+    private string? _company;
+    private bool _usageAlerts = true;
+    private bool _billingNotifications = true;
+    private bool _keyExpirationReminders = true;
+    private bool _loading;
+    private bool _saving;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var result = await TenantService.GetCurrentTenantAsync();
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _name = result.Value.Name;
+            _email = result.Value.ContactEmail;
+            _company = result.Value.CompanyName;
+        }
+        else
+        {
+            _error = "Failed to load profile.";
+        }
+        _loading = false;
+    }
+
+    private async Task SaveProfile()
+    {
+        _saving = true;
+        var result = await TenantService.UpdateProfileAsync(
+            new Models.Requests.UpdateProfileRequest(_name, _email, _company));
+        _saving = false;
+
+        if (result.IsSuccess)
+            Snackbar.Add("Profile updated.", Severity.Success);
+        else
+            Snackbar.Add(result.Error?.Message ?? "Failed to save.", Severity.Error);
+    }
+
+    private async Task SaveNotifications()
+    {
+        _saving = true;
+        var result = await TenantService.UpdateNotificationPreferencesAsync(
+            new Models.Requests.NotificationPreferencesRequest(_usageAlerts, _billingNotifications, _keyExpirationReminders));
+        _saving = false;
+
+        if (result.IsSuccess)
+            Snackbar.Add("Preferences saved.", Severity.Success);
+        else
+            Snackbar.Add(result.Error?.Message ?? "Failed to save.", Severity.Error);
+    }
+}

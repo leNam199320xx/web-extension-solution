@@ -1,0 +1,131 @@
+@page "/settings"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IProfileService ProfileService
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@* ── Publisher Profile ─────────────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">Publisher Profile</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_displayName" Label="Display Name"
+                          Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_email" Label="Email" ReadOnly
+                          Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_description" Label="Description"
+                          Lines="3" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SaveProfile" Disabled="_saving">
+                @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+                Save Profile
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* ── API Keys ──────────────────────────────────────────────────────── *@
+<MudPaper Class="pa-4" Elevation="2">
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h6">API Keys</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                   OnClick="GenerateKey">
+            Generate Key
+        </MudButton>
+    </MudStack>
+
+    @if (_keys.Count > 0)
+    {
+        <MudSimpleTable Hover Striped Dense>
+            <thead><tr><th>Name</th><th>Prefix</th><th>Created</th><th>Last Used</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var key in _keys)
+                {
+                    <tr>
+                        <td>@key.Name</td>
+                        <td style="font-family:monospace;">@key.Prefix•••</td>
+                        <td>@key.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        <td>@(key.LastUsedAt?.ToString("yyyy-MM-dd") ?? "Never")</td>
+                        <td>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error" OnClick="() => RevokeKey(key.KeyId)" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+    else
+    {
+        <MudText Color="Color.Secondary">No API keys. Generate one to get started.</MudText>
+    }
+</MudPaper>
+
+@code {
+    private string _displayName = "";
+    private string _email = "";
+    private string? _description;
+    private List<ApiKeyDto> _keys = [];
+    private bool _loading;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var profile = await ProfileService.GetCurrentUserProfileAsync();
+        if (profile is not null)
+        {
+            _displayName = profile.DisplayName;
+            _email = profile.Email;
+            _description = profile.PublisherDescription;
+        }
+
+        var keyList = await ProfileService.GetApiKeysAsync();
+        _keys = keyList?.Keys ?? [];
+        _loading = false;
+    }
+
+    private async Task SaveProfile()
+    {
+        _saving = true;
+        var success = await ProfileService.UpdateProfileAsync(
+            new UpdateProfileDto(_displayName, _description));
+        _saving = false;
+        Snackbar.Add(success ? "Profile saved." : "Failed to save.", success ? Severity.Success : Severity.Error);
+    }
+
+    private async Task GenerateKey()
+    {
+        var key = await ProfileService.GenerateApiKeyAsync("Marketplace Key");
+        if (key is not null)
+        {
+            _keys.Insert(0, key);
+            Snackbar.Add("Key generated.", Severity.Success);
+        }
+    }
+
+    private async Task RevokeKey(Guid keyId)
+    {
+        var success = await ProfileService.RevokeApiKeyAsync(keyId);
+        if (success)
+        {
+            _keys.RemoveAll(k => k.KeyId == keyId);
+            Snackbar.Add("Key revoked.", Severity.Info);
+        }
+    }
+}

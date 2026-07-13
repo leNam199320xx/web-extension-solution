@@ -13,5 +13,28 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let usageChartInstance = null;
+        window.renderUsageChart = (canvasId, labels, successData, failedData) => {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            if (usageChartInstance) usageChartInstance.destroy();
+            usageChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Successful', data: successData, backgroundColor: 'rgba(76, 175, 80, 0.7)', borderRadius: 3 },
+                        { label: 'Failed', data: failedData, backgroundColor: 'rgba(244, 67, 54, 0.7)', borderRadius: 3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+                }
+            });
+        };
+    </script>
 </body>
 </html>

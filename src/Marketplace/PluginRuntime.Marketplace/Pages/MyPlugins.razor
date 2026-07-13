@@ -1,0 +1,85 @@
+@page "/my-plugins"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IExtensionService ExtensionService
+@inject NavigationManager Navigation
+
+<PageTitle>My Plugins</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">My Plugins</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Upload"
+               Href="/upload">
+        Upload Plugin
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_extensions.Count == 0 && !_loading)
+{
+    <MudPaper Class="pa-6 text-center" Elevation="2">
+        <MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Large" Color="Color.Secondary" />
+        <MudText Typo="Typo.h6" Class="mt-3">No plugins yet</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Upload your first plugin to get started.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/upload">
+            Upload Plugin
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudDataGrid T="ExtensionSummaryDto" Items="_extensions" Hover Striped>
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name">
+                <CellTemplate Context="ctx">
+                    <MudLink Href="@($"/extensions/{ctx.Item.ExtensionId}")">@ctx.Item.Name</MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.LatestVersion" Title="Version" />
+            <PropertyColumn Property="x => x.Category" Title="Category" />
+            <TemplateColumn Title="Risk">
+                <CellTemplate Context="ctx">
+                    <MudChip T="string" Size="Size.Small" Color="GetRiskColor(ctx.Item.RiskLevel)">
+                        @ctx.Item.RiskLevel
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.SubscriberCount" Title="Subscribers" />
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate Context="ctx">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               Href="@($"/extensions/{ctx.Item.ExtensionId}")">
+                        View
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+
+@code {
+    private List<ExtensionSummaryDto> _extensions = [];
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _extensions = await ExtensionService.GetMyExtensionsAsync();
+        _loading = false;
+    }
+
+    private static Color GetRiskColor(string risk) => risk switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Success
+    };
+}

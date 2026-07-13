@@ -1,0 +1,116 @@
+@page "/docs"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>Documentation</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">API Documentation</MudText>
+
+@* ── Authentication ───────────────────────────────────────────────── *@
+<MudExpansionPanels MultiExpansion Class="mb-4">
+    <MudExpansionPanel Text="Authentication" IsInitiallyExpanded>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            All API calls require an API key sent via the <code>X-Api-Key</code> header.
+        </MudText>
+        <MudPaper Class="pa-3" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem; overflow-x:auto;">
+            <pre>curl https://gateway.example.com/api/plugins/execute \
+  -H "X-Api-Key: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{"extension_id": "com.example.hello", "input": {}}'</pre>
+        </MudPaper>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Execute Extension">
+        <MudText Typo="Typo.subtitle1" Class="mb-1"><strong>POST</strong> /api/plugins/execute</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">Execute an extension by ID with optional input.</MudText>
+        <MudText Typo="Typo.subtitle2">Request Body:</MudText>
+        <MudPaper Class="pa-3 mb-2" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem;">
+            <pre>{
+  "extension_id": "com.example.hello-world",
+  "input": { "name": "World" },
+  "timeout_ms": 5000
+}</pre>
+        </MudPaper>
+        <MudText Typo="Typo.subtitle2">Response:</MudText>
+        <MudPaper Class="pa-3" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem;">
+            <pre>{
+  "execution_id": "abc-123",
+  "status": "Completed",
+  "output": { "greeting": "Hello, World!" },
+  "duration_ms": 42
+}</pre>
+        </MudPaper>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Rate Limits & Quotas">
+        <MudSimpleTable Hover Dense>
+            <thead>
+                <tr><th>Plan</th><th>Daily Quota</th><th>Rate Limit</th><th>Overage</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Free</td><td>100/day</td><td>100/min</td><td>N/A (blocked)</td></tr>
+                <tr><td>Pro</td><td>10,000/day</td><td>10,000/min</td><td>$0.50/1k</td></tr>
+                <tr><td>Enterprise</td><td>Unlimited</td><td>Unlimited</td><td>N/A</td></tr>
+            </tbody>
+        </MudSimpleTable>
+        <MudText Typo="Typo.body2" Class="mt-2">
+            When quota is exceeded, responses return <code>429 Too Many Requests</code> with a <code>Retry-After</code> header.
+        </MudText>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Error Codes">
+        <MudSimpleTable Hover Dense>
+            <thead>
+                <tr><th>Code</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>AUTH_INVALID_KEY</code></td><td>API key is invalid or revoked</td></tr>
+                <tr><td><code>AUTH_EXPIRED_KEY</code></td><td>API key has expired</td></tr>
+                <tr><td><code>QUOTA_EXCEEDED</code></td><td>Daily quota exceeded</td></tr>
+                <tr><td><code>RATE_LIMITED</code></td><td>Too many requests per minute</td></tr>
+                <tr><td><code>EXTENSION_NOT_FOUND</code></td><td>Extension ID does not exist</td></tr>
+                <tr><td><code>EXECUTION_TIMEOUT</code></td><td>Extension execution timed out</td></tr>
+                <tr><td><code>EXECUTION_FAILED</code></td><td>Extension threw an unhandled error</td></tr>
+                <tr><td><code>ACCESS_DENIED</code></td><td>No subscription to this extension</td></tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Code Examples">
+        <MudTabs>
+            <MudTabPanel Text="C#">
+                <MudPaper Class="pa-3 mt-2" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem; overflow-x:auto;">
+                    <pre>var client = new HttpClient();
+client.DefaultRequestHeaders.Add("X-Api-Key", "your-key");
+
+var response = await client.PostAsJsonAsync(
+    "https://gateway.example.com/api/plugins/execute",
+    new { extension_id = "com.example.hello", input = new { } });
+
+var result = await response.Content.ReadFromJsonAsync&lt;ExecutionResult&gt;();</pre>
+                </MudPaper>
+            </MudTabPanel>
+            <MudTabPanel Text="Python">
+                <MudPaper Class="pa-3 mt-2" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem; overflow-x:auto;">
+                    <pre>import requests
+
+resp = requests.post(
+    "https://gateway.example.com/api/plugins/execute",
+    headers={"X-Api-Key": "your-key"},
+    json={"extension_id": "com.example.hello", "input": {}})
+
+print(resp.json())</pre>
+                </MudPaper>
+            </MudTabPanel>
+            <MudTabPanel Text="JavaScript">
+                <MudPaper Class="pa-3 mt-2" Style="background:#1e1e1e; color:#dcdcdc; font-family:monospace; font-size:0.85rem; overflow-x:auto;">
+                    <pre>const res = await fetch("https://gateway.example.com/api/plugins/execute", {
+  method: "POST",
+  headers: { "X-Api-Key": "your-key", "Content-Type": "application/json" },
+  body: JSON.stringify({ extension_id: "com.example.hello", input: {} })
+});
+const data = await res.json();</pre>
+                </MudPaper>
+            </MudTabPanel>
+        </MudTabs>
+    </MudExpansionPanel>
+</MudExpansionPanels>

@@ -56,15 +56,25 @@ Chọn vai trò của bạn và làm theo các bước bên dưới.
 ## Chạy Nền Tảng Trên Máy
 
 ```bash
-# Cách 1: Toàn bộ hệ thống với Aspire (cần Docker)
+# Cách 1: Toàn bộ hệ thống với Aspire Dashboard (không cần Docker)
 cd src/Aspire/PluginRuntime.AppHost
 dotnet run
-# Mở https://localhost:15888 để xem Aspire dashboard
+# Dashboard mở tại http://localhost:6000
+# Các service:
+#   API Backend       → http://localhost:6100 (Swagger: /swagger)
+#   API Gateway       → http://localhost:6200
+#   Marketplace       → http://localhost:6300
+#   Consumer Portal   → http://localhost:6400
+#   Admin Portal      → http://localhost:6500
 
-# Cách 2: Chỉ chạy API (dùng JSON storage, không cần database)
+# Cách 2: Tất cả service qua batch file (không cần Aspire, không Docker)
+run-all.bat
+# Cùng port như trên (6100–6500)
+
+# Cách 3: Chỉ chạy API (dùng JSON storage, không cần database)
 cd src/PluginRuntime.Api
+set ASPNETCORE_URLS=http://localhost:6100
 dotnet run
-# Đặt "DatabaseProvider": "Json" trong appsettings.json để chạy không cần DB
 ```
 
 ---

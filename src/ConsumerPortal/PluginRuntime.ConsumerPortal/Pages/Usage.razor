@@ -1,0 +1,178 @@
+@page "/usage"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IUsageService UsageService
+@inject IJSRuntime JS
+
+<PageTitle>Usage Analytics</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Usage Analytics</MudText>
+
+@* ── Date Range Filter ─────────────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+            <MudButton OnClick="() => SetRange(7)" Color="@(_rangeDays == 7 ? Color.Primary : Color.Default)">7 days</MudButton>
+            <MudButton OnClick="() => SetRange(30)" Color="@(_rangeDays == 30 ? Color.Primary : Color.Default)">30 days</MudButton>
+            <MudButton OnClick="() => SetRange(90)" Color="@(_rangeDays == 90 ? Color.Primary : Color.Default)">90 days</MudButton>
+        </MudButtonGroup>
+        <MudSpacer />
+        <MudDatePicker @bind-Date="_fromDate" Label="From" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudDatePicker @bind-Date="_toDate" Label="To" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                   OnClick="LoadDataAsync" StartIcon="@Icons.Material.Filled.Refresh">
+            Apply
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@* ── Summary Cards ─────────────────────────────────────────────────── *@
+@if (_summary is not null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Requests</MudText>
+                <MudText Typo="Typo.h5">@_summary.TotalRequests.ToString("N0")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Daily</MudText>
+                <MudText Typo="Typo.h5">@_summary.AvgDaily.ToString("N0")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Success Rate</MudText>
+                <MudText Typo="Typo.h5">
+                    @(_summary.TotalRequests > 0
+                        ? $"{(double)_summary.TotalSuccessful / _summary.TotalRequests * 100:F1}%"
+                        : "—")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Response Time</MudText>
+                <MudText Typo="Typo.h5">@_summary.AvgResponseTimeMs.ToString("F0") ms</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@* ── Chart ─────────────────────────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-2">Daily Requests</MudText>
+    <canvas id="usageChart" height="80"></canvas>
+</MudPaper>
+
+@* ── Data Table ────────────────────────────────────────────────────── *@
+<MudText Typo="Typo.h6" Class="mb-2">Daily Breakdown</MudText>
+<MudDataGrid T="UsageAggregateDto" Items="_dailyData" Hover Striped Dense>
+    <Columns>
+        <PropertyColumn Property="x => x.Date" Title="Date" Format="yyyy-MM-dd" />
+        <PropertyColumn Property="x => x.TotalRequests" Title="Total" />
+        <PropertyColumn Property="x => x.SuccessfulRequests" Title="Success" />
+        <PropertyColumn Property="x => x.FailedRequests" Title="Failed" />
+        <TemplateColumn Title="Success Rate">
+            <CellTemplate Context="ctx">
+                @{
+                    var rate = ctx.Item.TotalRequests > 0
+                        ? (double)ctx.Item.SuccessfulRequests / ctx.Item.TotalRequests * 100 : 0;
+                }
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(rate >= 99 ? Color.Success : rate >= 95 ? Color.Warning : Color.Error)">
+                    @rate.ToString("F1")%
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.AvgDurationMs" Title="Avg (ms)" Format="F0" />
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private List<UsageAggregateDto> _dailyData = [];
+    private UsageSummaryDto? _summary;
+    private bool _loading;
+    private string? _error;
+    private int _rangeDays = 30;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SetRange(30);
+        await LoadDataAsync();
+    }
+
+    private void SetRange(int days)
+    {
+        _rangeDays = days;
+        _toDate = DateTime.Today;
+        _fromDate = DateTime.Today.AddDays(-days + 1);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var from = DateOnly.FromDateTime(_fromDate ?? DateTime.Today.AddDays(-29));
+        var to = DateOnly.FromDateTime(_toDate ?? DateTime.Today);
+
+        var dailyResult = await UsageService.GetDailyUsageAsync(from, to);
+        var summaryResult = await UsageService.GetUsageSummaryAsync(from, to);
+
+        if (dailyResult.IsSuccess)
+        {
+            _dailyData = dailyResult.Value ?? [];
+        }
+        else if (dailyResult.IsNetworkError)
+        {
+            _error = "Unable to connect to server.";
+        }
+        else
+        {
+            _error = dailyResult.Error?.Message ?? "Failed to load usage data.";
+        }
+
+        if (summaryResult.IsSuccess)
+        {
+            _summary = summaryResult.Value;
+        }
+
+        _loading = false;
+
+        // Render chart after data is loaded
+        await RenderChartAsync();
+    }
+
+    private async Task RenderChartAsync()
+    {
+        if (_dailyData.Count == 0) return;
+
+        var labels = _dailyData.Select(d => d.Date.ToString("MM/dd")).ToArray();
+        var successData = _dailyData.Select(d => d.SuccessfulRequests).ToArray();
+        var failedData = _dailyData.Select(d => d.FailedRequests).ToArray();
+
+        await JS.InvokeVoidAsync("renderUsageChart", "usageChart", labels, successData, failedData);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _dailyData.Count > 0)
+        {
+            await RenderChartAsync();
+        }
+    }
+}

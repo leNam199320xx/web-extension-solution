@@ -1,0 +1,197 @@
+@page "/extensions/{Id:guid}"
+@inject IExtensionService ExtensionService
+@inject ISubscriptionService SubscriptionService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_ext?.Name ?? "Extension Detail")</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+else if (_ext is null)
+{
+    <MudAlert Severity="Severity.Error">Extension not found.</MudAlert>
+}
+else
+{
+    @* ── Header ────────────────────────────────────────────────────── *@
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/browse"))" />
+        <MudText Typo="Typo.h4">@_ext.Name</MudText>
+    </MudStack>
+
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">by @_ext.Author</MudText>
+        <MudChip T="string" Size="Size.Small" Color="GetRiskColor(_ext.RiskLevel)">@_ext.RiskLevel Risk</MudChip>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@_ext.Category</MudChip>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">v@_ext.LatestVersion</MudChip>
+        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.People">@_ext.SubscriberCount subscribers</MudChip>
+    </MudStack>
+
+    @* ── Action buttons ────────────────────────────────────────────── *@
+    <MudStack Row Spacing="2" Class="mb-4">
+        @if (_ext.Visibility == "Public")
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="Subscribe">Subscribe</MudButton>
+        }
+        else if (_ext.Visibility == "Subscription")
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Lock"
+                       OnClick="() => _requestDialogOpen = true">Request Access</MudButton>
+        }
+    </MudStack>
+
+    @* ── Tabs ──────────────────────────────────────────────────────── *@
+    <MudTabs Rounded Outlined Class="mb-4">
+        <MudTabPanel Text="Overview">
+            <MudPaper Class="pa-4 mt-2" Elevation="1">
+                <MudText Typo="Typo.body1" Style="white-space:pre-wrap;">@_ext.Description</MudText>
+            </MudPaper>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Permissions">
+            <MudPaper Class="pa-4 mt-2" Elevation="1">
+                @if (_ext.Permissions?.Groups is not null)
+                {
+                    @foreach (var group in _ext.Permissions.Groups)
+                    {
+                        <MudText Typo="Typo.subtitle1" Class="mt-3 mb-1">
+                            <MudChip T="string" Size="Size.Small" Color="GetRiskColor(group.RiskLevel)">@group.RiskLevel</MudChip>
+                        </MudText>
+                        <MudSimpleTable Hover Dense>
+                            <thead>
+                                <tr><th>Scope</th><th>Capability</th><th>Justification</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var perm in group.Permissions)
+                                {
+                                    <tr>
+                                        <td><code>@perm.Scope</code></td>
+                                        <td><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@perm.MappedCapability</MudChip></td>
+                                        <td>@perm.Justification</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">No permissions declared.</MudText>
+                }
+            </MudPaper>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Versions">
+            <MudPaper Class="pa-4 mt-2" Elevation="1">
+                <MudSimpleTable Hover Striped>
+                    <thead>
+                        <tr><th>Version</th><th>Status</th><th>Released</th><th>Note</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in _ext.Versions)
+                        {
+                            <tr>
+                                <td><strong>@v.Version</strong></td>
+                                <td><MudChip T="string" Size="Size.Small" Color="VersionStatusColor(v.Status)">@v.Status</MudChip></td>
+                                <td>@v.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>@(v.RejectionReason ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@* ── Request Subscription Dialog ───────────────────────────────────── *@
+<MudDialog @bind-Visible="_requestDialogOpen">
+    <TitleContent><MudText Typo="Typo.h6">Request Subscription</MudText></TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_reason" Label="Reason for access" Lines="3"
+                      Variant="Variant.Outlined" Class="mb-3" Required />
+        <MudNumericField @bind-Value="_expectedDaily" Label="Expected requests/day"
+                         Min="1" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_usagePattern" Label="Usage pattern"
+                      Placeholder="e.g. Batch processing every hour"
+                      Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _requestDialogOpen = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SubmitRequest" Disabled="_submitting">
+            @if (_submitting) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+            Submit Request
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ExtensionDetailDto? _ext;
+    private bool _loading;
+
+    // Request dialog
+    private bool _requestDialogOpen;
+    private string _reason = "";
+    private int _expectedDaily = 100;
+    private string _usagePattern = "";
+    private bool _submitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _ext = await ExtensionService.GetExtensionDetailAsync(Id);
+        _loading = false;
+    }
+
+    private async Task Subscribe()
+    {
+        var result = await SubscriptionService.RequestSubscriptionAsync(
+            new SubscriptionRequestDto(Id, "Public subscribe", new ExpectedUsageDto(100, "Standard usage")));
+        if (result is not null)
+            Snackbar.Add("Subscribed successfully!", Severity.Success);
+        else
+            Snackbar.Add("Subscription failed.", Severity.Error);
+    }
+
+    private async Task SubmitRequest()
+    {
+        if (string.IsNullOrWhiteSpace(_reason)) return;
+        _submitting = true;
+
+        var result = await SubscriptionService.RequestSubscriptionAsync(
+            new SubscriptionRequestDto(Id, _reason, new ExpectedUsageDto(_expectedDaily, _usagePattern)));
+
+        _submitting = false;
+        _requestDialogOpen = false;
+
+        if (result is not null)
+            Snackbar.Add("Subscription request submitted!", Severity.Success);
+        else
+            Snackbar.Add("Request failed.", Severity.Error);
+    }
+
+    private static Color GetRiskColor(string risk) => risk switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Success
+    };
+
+    private static Color VersionStatusColor(string status) => status switch
+    {
+        "Approved" or "Active" => Color.Success,
+        "Pending" => Color.Warning,
+        "Rejected" => Color.Error,
+        _ => Color.Default
+    };
+}

@@ -56,15 +56,25 @@ Pick your role and follow the steps below.
 ## Running the Platform Locally
 
 ```bash
-# Option 1: Full stack with Aspire (requires Docker)
+# Option 1: Full stack with Aspire Dashboard (no Docker required)
 cd src/Aspire/PluginRuntime.AppHost
 dotnet run
-# Open https://localhost:15888 for the Aspire dashboard
+# Dashboard opens at http://localhost:6000
+# Services:
+#   API Backend       → http://localhost:6100 (Swagger: /swagger)
+#   API Gateway       → http://localhost:6200
+#   Marketplace       → http://localhost:6300
+#   Consumer Portal   → http://localhost:6400
+#   Admin Portal      → http://localhost:6500
 
-# Option 2: Just the API (uses JSON storage, no DB needed)
+# Option 2: All services via batch file (no Aspire, no Docker)
+run-all.bat
+# Same ports as above (6100–6500)
+
+# Option 3: Just the API (uses JSON storage, no DB needed)
 cd src/PluginRuntime.Api
+set ASPNETCORE_URLS=http://localhost:6100
 dotnet run
-# Set "DatabaseProvider": "Json" in appsettings.json for zero-dependency mode
 ```
 
 ---

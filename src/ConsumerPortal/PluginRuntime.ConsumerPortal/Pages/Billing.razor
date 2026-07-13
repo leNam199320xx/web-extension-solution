@@ -1,0 +1,151 @@
+@page "/billing"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IInvoiceService InvoiceService
+
+<PageTitle>Billing</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Billing</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@* ── Billing Summary ──────────────────────────────────────────────── *@
+@if (_summary is not null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Current Plan</MudText>
+                <MudText Typo="Typo.h6">@_summary.CurrentPlan</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Current Month Charges</MudText>
+                <MudText Typo="Typo.h6">$@_summary.CurrentMonthCharges.ToString("F2")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Next Invoice</MudText>
+                <MudText Typo="Typo.h6">@(_summary.NextInvoiceDate?.ToString("MMM dd") ?? "—")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Payment Method</MudText>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Small" />
+                    <MudText Typo="Typo.h6">
+                        @(_summary.PaymentMethodLast4 is not null ? $"•••• {_summary.PaymentMethodLast4}" : "Not set")
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@* ── Invoice History ──────────────────────────────────────────────── *@
+<MudText Typo="Typo.h6" Class="mb-2">Invoice History</MudText>
+
+<MudDataGrid T="InvoiceDto" Items="_invoices" Hover Striped Loading="_loading">
+    <Columns>
+        <PropertyColumn Property="x => x.PeriodStart" Title="Period" Format="yyyy-MM-dd">
+            <CellTemplate Context="ctx">
+                <MudText>@ctx.Item.PeriodStart.ToString("MMM dd") — @ctx.Item.PeriodEnd.ToString("MMM dd, yyyy")</MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.BaseAmount" Title="Base" Format="C" />
+        <PropertyColumn Property="x => x.OverageAmount" Title="Overage" Format="C" />
+        <PropertyColumn Property="x => x.TotalAmount" Title="Total" Format="C">
+            <CellTemplate Context="ctx">
+                <MudText Typo="Typo.body1"><strong>$@ctx.Item.TotalAmount.ToString("F2")</strong></MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Status">
+            <CellTemplate Context="ctx">
+                <MudChip T="string" Size="Size.Small" Color="@InvoiceStatusColor(ctx.Item.Status)">
+                    @ctx.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.CreatedAt" Title="Date" Format="yyyy-MM-dd" />
+    </Columns>
+</MudDataGrid>
+
+@* ── Pagination ───────────────────────────────────────────────────── *@
+@if (_totalCount > _pageSize)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mt-3">
+        <MudText Typo="Typo.body2">
+            Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, _totalCount) of @_totalCount
+        </MudText>
+        <MudPagination Count="@TotalPages" SelectedChanged="OnPageChanged" />
+    </MudStack>
+}
+
+@code {
+    private BillingSummaryDto? _summary;
+    private List<InvoiceDto> _invoices = [];
+    private bool _loading;
+    private string? _error;
+    private int _page = 1;
+    private int _pageSize = 10;
+    private int _totalCount;
+    private int TotalPages => (int)Math.Ceiling((double)_totalCount / _pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+
+        var summaryResult = await InvoiceService.GetBillingSummaryAsync();
+        if (summaryResult.IsSuccess)
+        {
+            _summary = summaryResult.Value;
+        }
+
+        await LoadInvoicesAsync();
+        _loading = false;
+    }
+
+    private async Task LoadInvoicesAsync()
+    {
+        var result = await InvoiceService.GetInvoicesAsync(_page, _pageSize);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _invoices = result.Value.Items;
+            _totalCount = result.Value.TotalCount;
+        }
+        else if (result.IsNetworkError)
+        {
+            _error = "Unable to connect to server.";
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to load invoices.";
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = page;
+        _loading = true;
+        await LoadInvoicesAsync();
+        _loading = false;
+    }
+
+    private static Color InvoiceStatusColor(string status) => status switch
+    {
+        "Paid" => Color.Success,
+        "Pending" => Color.Warning,
+        "Failed" => Color.Error,
+        _ => Color.Default
+    };
+}

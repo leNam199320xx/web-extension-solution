@@ -1,8 +1,185 @@
 @page "/dashboard"
 @page "/"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IUsageService UsageService
+@inject IApiKeyService KeyService
 
 <PageTitle>Dashboard</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
-<MudText Typo="Typo.body1">Welcome to the API Consumer Portal. Your usage data and API keys are managed here.</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@if (_dashboard is not null)
+{
+    @* ── Plan & Quota ──────────────────────────────────────────────── *@
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Current Plan</MudText>
+                    <MudChip T="string" Color="@PlanColor(_dashboard.PlanName)" Size="Size.Medium">
+                        @_dashboard.PlanName
+                    </MudChip>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Today's Requests</MudText>
+                    <MudText Typo="Typo.h5">@_dashboard.TodayRequests.ToString("N0")</MudText>
+                    @if (_dashboard.DailyQuota.HasValue)
+                    {
+                        <MudProgressLinear Value="@QuotaPercent" Color="@QuotaColor" Class="mt-1" />
+                        <MudText Typo="Typo.caption">@_dashboard.TodayRequests / @_dashboard.DailyQuota.Value</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption">Unlimited</MudText>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active API Keys</MudText>
+                    <MudText Typo="Typo.h5">@_dashboard.ActiveKeyCount</MudText>
+                    @if (_dashboard.ExpiringKeyCount > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">
+                            @_dashboard.ExpiringKeyCount expiring soon
+                        </MudChip>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Success Rate Today</MudText>
+                    <MudText Typo="Typo.h5">
+                        @(_dashboard.TodayRequests > 0
+                            ? $"{(double)_dashboard.TodaySuccessful / _dashboard.TodayRequests * 100:F1}%"
+                            : "—")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        @_dashboard.TodayFailed failed
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* ── Quota Warning ─────────────────────────────────────────────── *@
+    @if (QuotaPercent >= 80 && _dashboard.DailyQuota.HasValue)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Warning">
+            You've used @QuotaPercent.ToString("F0")% of your daily quota.
+            @if (QuotaPercent >= 100)
+            {
+                <text> Requests will be throttled. Consider upgrading your plan.</text>
+            }
+        </MudAlert>
+    }
+
+    @* ── Recent Activity ───────────────────────────────────────────── *@
+    <MudText Typo="Typo.h6" Class="mb-2">Recent Activity (Last 5 Days)</MudText>
+    <MudSimpleTable Hover Striped Dense Class="mb-4">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Requests</th>
+                <th>Success Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var day in _dashboard.RecentActivity)
+            {
+                <tr>
+                    <td>@day.Date.ToString("yyyy-MM-dd")</td>
+                    <td>@day.TotalRequests.ToString("N0")</td>
+                    <td>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(day.SuccessRate >= 99 ? Color.Success : day.SuccessRate >= 95 ? Color.Warning : Color.Error)">
+                            @day.SuccessRate.ToString("F1")%
+                        </MudChip>
+                    </td>
+                </tr>
+            }
+            @if (_dashboard.RecentActivity.Count == 0)
+            {
+                <tr><td colspan="3"><MudText Color="Color.Secondary">No activity yet</MudText></td></tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    @* ── Quick Actions ─────────────────────────────────────────────── *@
+    <MudText Typo="Typo.h6" Class="mb-2">Quick Actions</MudText>
+    <MudStack Row Spacing="2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   Href="/api-keys" StartIcon="@Icons.Material.Filled.Key">
+            Manage Keys
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Info"
+                   Href="/usage" StartIcon="@Icons.Material.Filled.Analytics">
+            View Analytics
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                   Href="/plans" StartIcon="@Icons.Material.Filled.Upgrade">
+            Upgrade Plan
+        </MudButton>
+    </MudStack>
+}
+
+@code {
+    private DashboardUsageDto? _dashboard;
+    private bool _loading;
+    private string? _error;
+
+    private double QuotaPercent => _dashboard?.DailyQuota > 0
+        ? (double)_dashboard.TodayRequests / _dashboard.DailyQuota.Value * 100
+        : 0;
+
+    private Color QuotaColor => QuotaPercent switch
+    {
+        >= 100 => Color.Error,
+        >= 80 => Color.Warning,
+        _ => Color.Success
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var result = await UsageService.GetDashboardUsageAsync();
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _dashboard = result.Value;
+        }
+        else if (result.IsNetworkError)
+        {
+            _error = "Unable to connect to server. Please check your connection.";
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to load dashboard data.";
+        }
+        _loading = false;
+    }
+
+    private static Color PlanColor(string plan) => plan switch
+    {
+        "Enterprise" => Color.Primary,
+        "Pro" => Color.Info,
+        _ => Color.Default
+    };
+}

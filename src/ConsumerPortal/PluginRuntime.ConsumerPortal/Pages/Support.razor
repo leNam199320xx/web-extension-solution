@@ -1,0 +1,108 @@
+@page "/support"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject ISupportService SupportService
+@inject ISnackbar Snackbar
+
+<PageTitle>Support</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Support</MudText>
+
+@* ── FAQ ──────────────────────────────────────────────────────────── *@
+<MudText Typo="Typo.h6" Class="mb-2">Frequently Asked Questions</MudText>
+<MudExpansionPanels Class="mb-6">
+    <MudExpansionPanel Text="How do I get my API key?">
+        <MudText>Go to <MudLink Href="/api-keys">API Keys</MudLink> and click "Create Key". The key is shown only once — copy it immediately.</MudText>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="What happens when I exceed my daily quota?">
+        <MudText>On the Free plan, requests are blocked (429 response). On Pro, overage charges apply at $0.50 per 1,000 extra requests.</MudText>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="Can I downgrade my plan?">
+        <MudText>Yes. Go to <MudLink Href="/plans">Plans</MudLink>. Downgrades take effect at the next billing cycle. Ensure you're within the new plan's limits first.</MudText>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="How do I subscribe to premium extensions?">
+        <MudText>Browse the Marketplace and click "Subscribe" or "Request Subscription" on the extension you need.</MudText>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="My API key stopped working. What should I do?">
+        <MudText>Check if the key is expired or revoked in <MudLink Href="/api-keys">API Keys</MudLink>. If your account is suspended due to payment issues, check <MudLink Href="/billing">Billing</MudLink>.</MudText>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@* ── Contact Form ─────────────────────────────────────────────────── *@
+<MudPaper Class="pa-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">Submit a Ticket</MudText>
+
+    @if (_submitted)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-3">
+            Ticket submitted! Reference: <strong>@_ticketRef</strong>
+        </MudAlert>
+    }
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_subject" Label="Subject" Variant="Variant.Outlined" Required />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect @bind-Value="_category" Label="Category" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("Billing")">Billing</MudSelectItem>
+                <MudSelectItem Value="@("Technical")">Technical</MudSelectItem>
+                <MudSelectItem Value="@("Account")">Account</MudSelectItem>
+                <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect @bind-Value="_priority" Label="Priority" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("Low")">Low</MudSelectItem>
+                <MudSelectItem Value="@("Medium")">Medium</MudSelectItem>
+                <MudSelectItem Value="@("High")">High</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_message" Label="Description" Variant="Variant.Outlined"
+                          Lines="5" Required />
+        </MudItem>
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SubmitTicket" Disabled="_submitting">
+                @if (_submitting) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+                Submit Ticket
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    private string _subject = "";
+    private string _category = "Technical";
+    private string _priority = "Medium";
+    private string _message = "";
+    private bool _submitting;
+    private bool _submitted;
+    private string? _ticketRef;
+
+    private async Task SubmitTicket()
+    {
+        if (string.IsNullOrWhiteSpace(_subject) || string.IsNullOrWhiteSpace(_message))
+        {
+            Snackbar.Add("Subject and description are required.", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        var result = await SupportService.SubmitTicketAsync(
+            new Models.Requests.SupportTicketRequest(_subject, _category, _priority, _message));
+        _submitting = false;
+
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _ticketRef = result.Value.TicketReference;
+            _submitted = true;
+            _subject = "";
+            _message = "";
+        }
+        else
+        {
+            Snackbar.Add(result.Error?.Message ?? "Failed to submit ticket.", Severity.Error);
+        }
+    }
+}

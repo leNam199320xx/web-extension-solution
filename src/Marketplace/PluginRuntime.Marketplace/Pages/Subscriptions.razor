@@ -1,0 +1,159 @@
+@page "/subscriptions"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject ISubscriptionService SubscriptionService
+@inject ISnackbar Snackbar
+
+<PageTitle>Subscriptions</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Subscriptions</MudText>
+
+<MudTabs @bind-ActivePanelIndex="_tabIndex" Rounded Outlined Class="mb-4">
+    <MudTabPanel Text="Active" />
+    <MudTabPanel Text="Pending" />
+    <MudTabPanel Text="Incoming Requests" />
+</MudTabs>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@* ── Active/Outgoing ──────────────────────────────────────────────── *@
+@if (_tabIndex == 0)
+{
+    var active = _outgoing.Where(s => s.Status == "Approved").ToList();
+    @if (active.Count == 0)
+    {
+        <MudText Color="Color.Secondary">No active subscriptions.</MudText>
+    }
+    else
+    {
+        <MudDataGrid T="SubscriptionDto" Items="active" Hover Striped>
+            <Columns>
+                <PropertyColumn Property="x => x.TargetExtensionName" Title="Extension" />
+                <TemplateColumn Title="Status">
+                    <CellTemplate Context="ctx">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">@ctx.Item.Status</MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.RequestedAt" Title="Since" Format="yyyy-MM-dd" />
+            </Columns>
+        </MudDataGrid>
+    }
+}
+
+@* ── Pending ──────────────────────────────────────────────────────── *@
+@if (_tabIndex == 1)
+{
+    var pending = _outgoing.Where(s => s.Status == "Pending").ToList();
+    @if (pending.Count == 0)
+    {
+        <MudText Color="Color.Secondary">No pending requests.</MudText>
+    }
+    else
+    {
+        <MudDataGrid T="SubscriptionDto" Items="pending" Hover Striped>
+            <Columns>
+                <PropertyColumn Property="x => x.TargetExtensionName" Title="Extension" />
+                <TemplateColumn Title="Status">
+                    <CellTemplate Context="ctx">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pending</MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.RequestedAt" Title="Requested" Format="yyyy-MM-dd" />
+                <PropertyColumn Property="x => x.Reason" Title="Reason" />
+            </Columns>
+        </MudDataGrid>
+    }
+}
+
+@* ── Incoming Requests (for extension owners) ─────────────────────── *@
+@if (_tabIndex == 2)
+{
+    @if (_incoming.Count == 0)
+    {
+        <MudText Color="Color.Secondary">No incoming requests.</MudText>
+    }
+    else
+    {
+        <MudDataGrid T="SubscriptionDto" Items="_incoming" Hover Striped>
+            <Columns>
+                <PropertyColumn Property="x => x.TargetExtensionName" Title="Extension" />
+                <TemplateColumn Title="Status">
+                    <CellTemplate Context="ctx">
+                        <MudChip T="string" Size="Size.Small" Color="SubStatusColor(ctx.Item.Status)">
+                            @ctx.Item.Status
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Reason" Title="Reason" />
+                <TemplateColumn Title="Expected Usage">
+                    <CellTemplate Context="ctx">
+                        @if (ctx.Item.ExpectedUsage is not null)
+                        {
+                            <MudText Typo="Typo.body2">@ctx.Item.ExpectedUsage.RequestsPerDay req/day — @ctx.Item.ExpectedUsage.UsagePattern</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.RequestedAt" Title="Requested" Format="yyyy-MM-dd" />
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate Context="ctx">
+                        @if (ctx.Item.Status == "Pending")
+                        {
+                            <MudStack Row Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                           OnClick="() => Decide(ctx.Item, true)">
+                                    Approve
+                                </MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error"
+                                           OnClick="() => Decide(ctx.Item, false)">
+                                    Reject
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+}
+
+@code {
+    private List<SubscriptionDto> _outgoing = [];
+    private List<SubscriptionDto> _incoming = [];
+    private bool _loading;
+    private int _tabIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _outgoing = await SubscriptionService.GetOutgoingRequestsAsync();
+        _incoming = await SubscriptionService.GetIncomingRequestsAsync();
+        _loading = false;
+    }
+
+    private async Task Decide(SubscriptionDto sub, bool approve)
+    {
+        var result = await SubscriptionService.DecideSubscriptionAsync(
+            new SubscriptionDecisionDto(sub.SubscriptionId, approve, null, null));
+
+        if (result is not null)
+        {
+            Snackbar.Add(approve ? "Approved!" : "Rejected.", approve ? Severity.Success : Severity.Info);
+            // Reload
+            _incoming = await SubscriptionService.GetIncomingRequestsAsync();
+        }
+        else
+        {
+            Snackbar.Add("Action failed.", Severity.Error);
+        }
+    }
+
+    private static Color SubStatusColor(string status) => status switch
+    {
+        "Approved" => Color.Success,
+        "Pending" => Color.Warning,
+        "Rejected" => Color.Error,
+        _ => Color.Default
+    };
+}

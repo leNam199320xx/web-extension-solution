@@ -23,5 +23,10 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredServ
 
 // Services
 builder.Services.AddScoped<ITenantService, TenantService>();
+builder.Services.AddScoped<IPlanService, PlanService>();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+builder.Services.AddScoped<IUsageService, UsageService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<ISupportService, SupportService>();
 
 await builder.Build().RunAsync();

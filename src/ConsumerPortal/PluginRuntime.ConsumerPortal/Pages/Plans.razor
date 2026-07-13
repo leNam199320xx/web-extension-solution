@@ -1,0 +1,181 @@
+@page "/plans"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IPlanService PlanService
+@inject ITenantService TenantService
+@inject ISnackbar Snackbar
+
+<PageTitle>Plans</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Plans & Pricing</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@* ── Plan Cards ────────────────────────────────────────────────────── *@
+<MudGrid Class="mb-6">
+    @foreach (var plan in _plans)
+    {
+        var isCurrent = string.Equals(plan.Name, _currentPlan, StringComparison.OrdinalIgnoreCase);
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="@(isCurrent ? 4 : 2)" Class="@(isCurrent ? "border-solid border-2 mud-border-primary" : "")">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                            <MudText Typo="Typo.h5">@plan.Name</MudText>
+                            @if (isCurrent)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small">Current</MudChip>
+                            }
+                        </MudStack>
+                        <MudText Typo="Typo.h4" Color="Color.Primary" Class="mt-2">
+                            @(plan.MonthlyPrice == 0 ? "Free" : $"${plan.MonthlyPrice}/mo")
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudList T="string" Dense>
+                        <MudListItem Icon="@Icons.Material.Filled.Speed">
+                            @(plan.DailyQuota.HasValue ? $"{plan.DailyQuota.Value:N0} requests/day" : "Unlimited requests")
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Key">
+                            @(plan.MaxApiKeys.HasValue ? $"{plan.MaxApiKeys.Value} API keys" : "Unlimited keys")
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Timer">
+                            @(plan.RateLimit.HasValue ? $"{plan.RateLimit.Value:N0} req/min" : "No rate limit")
+                        </MudListItem>
+                        @if (plan.OverageRatePer1k.HasValue)
+                        {
+                            <MudListItem Icon="@Icons.Material.Filled.AttachMoney">
+                                $@plan.OverageRatePer1k.Value / 1k overage
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudCardContent>
+                <MudCardActions>
+                    @if (isCurrent)
+                    {
+                        <MudButton Variant="Variant.Outlined" Disabled FullWidth>Current Plan</MudButton>
+                    }
+                    else
+                    {
+                        var isUpgrade = plan.MonthlyPrice > GetCurrentPlanPrice();
+                        <MudButton Variant="Variant.Filled" FullWidth
+                                   Color="@(isUpgrade ? Color.Primary : Color.Secondary)"
+                                   OnClick="() => OpenChangePlanDialog(plan, isUpgrade)">
+                            @(isUpgrade ? "Upgrade" : "Downgrade")
+                        </MudButton>
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@* ── Plan change confirmation dialog ──────────────────────────────── *@
+<MudDialog @bind-Visible="_dialogOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_isUpgrade ? "Upgrade" : "Downgrade") Plan</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isUpgrade)
+        {
+            <MudText>
+                Upgrade to <strong>@_targetPlan?.Name</strong>? New limits apply immediately.
+                You'll be charged a prorated amount for the remainder of this billing period.
+            </MudText>
+        }
+        else
+        {
+            <MudText>
+                Downgrade to <strong>@_targetPlan?.Name</strong>? Current limits remain until your next billing date.
+                Please ensure you're within the new plan's limits.
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _dialogOpen = false">Cancel</MudButton>
+        <MudButton Color="@(_isUpgrade ? Color.Primary : Color.Warning)"
+                   Variant="Variant.Filled"
+                   OnClick="ConfirmChangePlan" Disabled="_changing">
+            @if (_changing) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+            Confirm @(_isUpgrade ? "Upgrade" : "Downgrade")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<PlanDto> _plans = [];
+    private string? _currentPlan;
+    private bool _loading;
+    private string? _error;
+
+    // Dialog
+    private bool _dialogOpen;
+    private PlanDto? _targetPlan;
+    private bool _isUpgrade;
+    private bool _changing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+
+        var plansResult = await PlanService.GetAllPlansAsync();
+        if (plansResult.IsSuccess)
+        {
+            _plans = plansResult.Value ?? [];
+        }
+        else
+        {
+            _error = "Failed to load plans.";
+        }
+
+        var tenantResult = await TenantService.GetCurrentTenantAsync();
+        if (tenantResult.IsSuccess && tenantResult.Value is not null)
+        {
+            _currentPlan = tenantResult.Value.PlanName;
+        }
+
+        _loading = false;
+    }
+
+    private decimal GetCurrentPlanPrice()
+    {
+        return _plans.FirstOrDefault(p =>
+            string.Equals(p.Name, _currentPlan, StringComparison.OrdinalIgnoreCase))?.MonthlyPrice ?? 0;
+    }
+
+    private void OpenChangePlanDialog(PlanDto plan, bool isUpgrade)
+    {
+        _targetPlan = plan;
+        _isUpgrade = isUpgrade;
+        _dialogOpen = true;
+    }
+
+    private async Task ConfirmChangePlan()
+    {
+        if (_targetPlan is null) return;
+        _changing = true;
+
+        var result = await PlanService.ChangePlanAsync(new Models.Requests.PlanChangeRequest(_targetPlan.PlanId));
+        _changing = false;
+        _dialogOpen = false;
+
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _currentPlan = _targetPlan.Name;
+            Snackbar.Add($"Plan changed to {_targetPlan.Name}. {result.Value.Type} — effective {result.Value.EffectiveAt:yyyy-MM-dd}",
+                Severity.Success);
+        }
+        else
+        {
+            _error = result.Error?.Message ?? "Failed to change plan.";
+        }
+    }
+}
