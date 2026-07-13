@@ -63,4 +63,38 @@ public sealed class AdminController : ControllerBase
         }).ToList();
         return Ok(new { plans = result });
     }
+
+    /// <summary>
+    /// Resets all JSON data to seed state. Useful for demo/presentations.
+    /// Only works when DatabaseProvider=Json.
+    /// </summary>
+    [HttpPost("reset-demo")]
+    public IActionResult ResetDemo([FromServices] IConfiguration config)
+    {
+        var provider = config["DatabaseProvider"] ?? "PostgreSQL";
+        if (!string.Equals(provider, "Json", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "Reset only available in Json storage mode." });
+        }
+
+        var dataDir = config["JsonDataDirectory"] ?? Path.Combine(AppContext.BaseDirectory, "data");
+        var seedDir = Path.Combine(AppContext.BaseDirectory, "data", "seed");
+
+        if (!Directory.Exists(seedDir))
+        {
+            // No seed directory — just log
+            _logger.LogWarning("Seed directory not found at {SeedDir}. Skipping reset.", seedDir);
+            return Ok(new { message = "No seed directory found. Data unchanged." });
+        }
+
+        // Copy all seed files to data directory
+        foreach (var seedFile in Directory.GetFiles(seedDir, "*.json"))
+        {
+            var destFile = Path.Combine(dataDir, Path.GetFileName(seedFile));
+            System.IO.File.Copy(seedFile, destFile, overwrite: true);
+        }
+
+        _logger.LogInformation("Demo data reset from seed directory.");
+        return Ok(new { message = "Demo data reset to seed state.", timestamp = DateTime.UtcNow });
+    }
 }

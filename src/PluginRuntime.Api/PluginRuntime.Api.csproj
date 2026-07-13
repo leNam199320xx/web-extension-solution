@@ -26,6 +26,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SDK\PluginRuntime.Sdk\PluginRuntime.Sdk.csproj" />
+    <ProjectReference Include="..\Core\PluginRuntime.Core\PluginRuntime.Core.csproj" />
+    <ProjectReference Include="..\Core\PluginRuntime.Runtime\PluginRuntime.Runtime.csproj" />
+    <ProjectReference Include="..\Core\PluginRuntime.Security\PluginRuntime.Security.csproj" />
+    <ProjectReference Include="..\Capabilities\PluginRuntime.Capabilities.Abstractions\PluginRuntime.Capabilities.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

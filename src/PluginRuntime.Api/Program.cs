@@ -93,6 +93,10 @@ builder.Services.AddBillingModule(builder.Configuration);
 builder.Services.AddSubscriptionsModule(builder.Configuration);
 builder.Services.AddGatewayModule(builder.Configuration);
 
+// --- Runtime Engine (Demo Mode) ---
+builder.Services.AddSingleton<PluginRuntime.Core.Interfaces.IRateLimiter, PluginRuntime.Api.Modules.Portal.DemoRateLimiter>();
+builder.Services.AddSingleton<PluginRuntime.Core.Interfaces.IExecutionPipeline, PluginRuntime.Api.Modules.Portal.DemoExecutionPipeline>();
+
 var app = builder.Build();
 
 // --- Middleware Pipeline ---
